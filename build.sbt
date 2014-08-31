@@ -1,4 +1,4 @@
-name := "spark validator"
+name := "spark_validator"
 
 version := "0.0.1"
 
@@ -6,7 +6,7 @@ scalaVersion := "2.10.3"
 
 // additional libraries
 libraryDependencies ++= Seq(
-  "org.apache.spark" %% "spark-core" % "0.9.1",
+  "org.apache.spark" %% "spark-core" % "1.0.0"
 )
 
 resolvers ++= Seq(
