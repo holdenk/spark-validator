@@ -8,7 +8,9 @@ import scala.collection.mutable.HashMap
 import org.apache.spark.SparkContext
 import org.apache.spark.Accumulator
 
-class Validation(sc: SparkContext) {
+import com.holdenkarau.spark_validator.HistoricDataProtos.HistoricData
+
+class Validation(sc: SparkContext, config: ValidationConf) {
   protected val accumulators = new HashMap[String, Accumulator[Numeric[_]]]()
   protected val validationListener = new ValidationListener()
   sc.addSparkListener(validationListener)
@@ -24,11 +26,21 @@ class Validation(sc: SparkContext) {
   /*
    * Validates a run of a Spark Job. Returns true if the job is valid and
    * also adds a SUCCESS marker to the path specified.
-   * @param sc a spark context to run on (not necessarily the same as the job).
-   *  create it by calling setupListener.
-   * @param config the configuration (path, rules, etc.) for this job
    */
-  def validate(sc: SparkContext, config: ValidationConf): Boolean = {
+  def validate(): Boolean = {
+    // Make a copy of the validation listener so that if we trigger
+    // an work on the spark context this does not update our counters from this point
+    // forward.
+    val validationListenerCopy = validationListener.copy()
+    // Also fetch all the accumulators values
+    val accumulatorsValues = accumulators.mapValues(_.value)
+    val oldRuns = findOldCounters()
+    config.rules.exists(rule => rule.validate(oldRuns, validationListenerCopy, accumulatorsValues))
+  }
+  private def saveCounters(): Boolean = {
     false
+  }
+  private def findOldCounters() = {
+    List(HistoricData.newBuilder().build());
   }
 }

@@ -10,8 +10,8 @@ import org.apache.spark.executor.TaskMetrics
 
 class ValidationListener extends SparkListener {
 
-  val taskInfoMetrics = mutable.Buffer[(TaskInfo, TaskMetrics)]()
-  val stageMetrics = mutable.Buffer[StageInfo]()
+  private val taskInfoMetrics = mutable.Buffer[(TaskInfo, TaskMetrics)]()
+  private val stageMetrics = mutable.Buffer[StageInfo]()
   /**
    * Called when a stage completes successfully or fails, with information on the completed stage.
    */
@@ -28,5 +28,11 @@ class ValidationListener extends SparkListener {
     if (info != null && metrics != null) {
       taskInfoMetrics += ((info, metrics))
     }
+  }
+  def copy(): ValidationListener = {
+    val other = new ValidationListener()
+    taskInfoMetrics.copyToBuffer(other.taskInfoMetrics)
+    stageMetrics.copyToBuffer(other.stageMetrics)
+    other
   }
 }

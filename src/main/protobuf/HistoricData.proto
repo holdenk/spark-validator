@@ -1,0 +1,22 @@
+package com.holdenkarau.spark_validator;
+
+option java_outer_classname = "HistoricDataProtos";
+
+// Counter info.
+message CounterInfo {
+  required Numeric value = 1;
+  required string name = 2;
+}
+
+// Allow us to say its int32 or a double. One of these two should always
+// be set but not both.
+message Numeric {
+  optional int64 int64 = 1;
+  optional double double = 2;
+}
+
+
+message HistoricData {
+  repeated CounterInfo internalCounters = 1;
+  repeated CounterInfo userCounters = 2;
+}
