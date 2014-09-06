@@ -38,7 +38,19 @@ class Validation(sc: SparkContext, config: ValidationConf) {
     config.rules.exists(rule => rule.validate(oldRuns, validationListenerCopy, accumulatorsValues))
   }
   private def saveCounters(): Boolean = {
-    false
+    // Make the HistoricData object
+    val historicDataBuilder = HistoricData.newBuilder()
+    accumulators.map{case (key, value) =>
+      historicDataBuilder.addUserCounters(
+        CounterInfo.newBuilder.value(value).name(key).build())}
+    validationListener.toMap().map{case (key, value) =>
+      historicDataBuilder.addInternalCounters(
+        CounterInfo.newBuilder.value(value).name(key).build())}
+    val historicData = historicDataBuilder.build()
+    val historicDataByes = historicData.toByteArray()
+    val historicDataDebug = historicData.toString()
+    sc.parallelize(List(nil, historicDataBytes))
+      .saveAsSequenceFile(conf.jobBasePath + "/" + conf.jobDir + "/validator/HistoricDataSequenceFile")
   }
   private def findOldCounters() = {
     List(HistoricData.newBuilder().build());

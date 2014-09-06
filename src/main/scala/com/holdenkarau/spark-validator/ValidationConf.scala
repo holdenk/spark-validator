@@ -4,5 +4,5 @@
  */
 package com.holdenkarau.spark_validator
 
-case class ValidationConf (jobPath: String, firstTime: Boolean, rules: List[ValidationRule]) {
+case class ValidationConf (jobBasePath: String, jobDir: String, firstTime: Boolean, rules: List[ValidationRule]) {
 }
