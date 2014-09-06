@@ -6,29 +6,18 @@ package com.holdenkarau.spark_validator
 import com.holdenkarau.spark_validator.HistoricDataProtos.HistoricData
 
 abstract class ValidationRule {
-  def validate(historicData: List[HistoricData], vl: ValidationListener, counters: scala.collection.Map[String, Numeric[_]]): Boolean
-  /*
-   * Check that a range is valid. One or both of min and max should be specified. If neither is specified
-   * returns true */
-  def checkRange(input: Numeric[_], min: Option[Numeric[_]], max: Option[Numeric[_]]): Boolean = {
-    val res = (min.map(minValue => input > minValue) ++ max.map(maxValue => input < maxValue))
-    res.fold(true)(a, b => a && b)
-  }
+  def validate(historicData: List[HistoricData], current: HistoricData): Boolean
 }
 
-abstract class NoHistoryValidationRule extends ValidationRule {
-  override def validate(historicData: List[HistoricData], vl: ValidationListener, counters: scala.collection.Map[String, Numeric[_]]): Boolean = {
-    validate(vl, counters)
+abstract class NoHistoryValidationRule[T] extends ValidationRule {
+  override def validate(historicData: List[HistoricData], current: HistoricData): Boolean = {
+    validate(current)
   }
-  def validate(vl: ValidationListener, counters: scala.collection.Map[String, Numeric[_]]): Boolean
+  def validate(current: HistoricData): Boolean
 }
 
-case class AbsoluteSparkCounterValidationRule(counterName: String, min: Option[Numeric[_]], max: Option[Numeric[_]]) extends NoHistoryValidationRule {
-  override def validate(vl: ValidationListener, counters: scala.collection.Map[String, Numeric[_]]): Boolean = {
-  }
-}
-
-case class AbsoluteUserCounterValidationRule(counterName: String, min: Option[Numeric[_]], max: Option[Numeric[_]]) extends NoHistoryValidationRule {
-  override def validate(vl: ValidationListener, counters: scala.collection.Map[String, Numeric[_]]): Boolean = {
+case class AbsoluteSparkCounterValidationRule[T <: Numeric[_]](counterName: String, min: Option[T], max: Option[T]) extends NoHistoryValidationRule {
+  override def validate(current: HistoricData): Boolean = {
+    false
   }
 }

@@ -6,12 +6,26 @@ package com.holdenkarau.spark_validator
 import scala.collection.mutable.HashMap
 
 import org.apache.spark.SparkContext
+import org.apache.spark.SparkContext._
 import org.apache.spark.Accumulator
 
+import com.holdenkarau.spark_validator.HistoricDataProtos.CounterInfo
 import com.holdenkarau.spark_validator.HistoricDataProtos.HistoricData
 
 class Validation(sc: SparkContext, config: ValidationConf) {
-  protected val accumulators = new HashMap[String, Accumulator[Numeric[_]]]()
+  case class typedAccumulators(
+    doubles: HashMap[String, Accumulator[Double]],
+    ints: HashMap[String, Accumulator[Int]],
+    floats: HashMap[String, Accumulator[Float]],
+    longs: HashMap[String, Accumulator[Long]]) {
+  }
+
+  protected val accumulators = new typedAccumulators(
+    new HashMap[String, Accumulator[Double]](),
+    new HashMap[String, Accumulator[Int]](),
+    new HashMap[String, Accumulator[Float]](),
+    new HashMap[String, Accumulator[Long]]())
+
   protected val validationListener = new ValidationListener()
   sc.addSparkListener(validationListener)
 
@@ -19,10 +33,23 @@ class Validation(sc: SparkContext, config: ValidationConf) {
    * Register an accumulator with the SparkValidator. Will overwrite any previous
    * accumulator with the same name.
    */
-  def registerAccumulator(accumulator: Accumulator[Numeric[_]],
-    name: String) {
-    accumulators += ((name, accumulator))
+  def registerAccumulator(accumulator: Accumulator[Double],
+    name: String)(implicit d: DummyImplicit) {
+    accumulators.doubles += ((name, accumulator))
   }
+  def registerAccumulator(accumulator: Accumulator[Int],
+    name: String)(implicit d: DummyImplicit,  d2: DummyImplicit) {
+    accumulators.ints += ((name, accumulator))
+  }
+  def registerAccumulator(accumulator: Accumulator[Long],
+    name: String)(implicit d: DummyImplicit,  d2: DummyImplicit,  d3: DummyImplicit) {
+    accumulators.longs += ((name, accumulator))
+  }
+  def registerAccumulator(accumulator: Accumulator[Float],
+    name: String) {
+    accumulators.floats += ((name, accumulator))
+  }
+
   /*
    * Validates a run of a Spark Job. Returns true if the job is valid and
    * also adds a SUCCESS marker to the path specified.
@@ -33,25 +60,34 @@ class Validation(sc: SparkContext, config: ValidationConf) {
     // forward.
     val validationListenerCopy = validationListener.copy()
     // Also fetch all the accumulators values
-    val accumulatorsValues = accumulators.mapValues(_.value)
     val oldRuns = findOldCounters()
-    config.rules.exists(rule => rule.validate(oldRuns, validationListenerCopy, accumulatorsValues))
+    // Format the current data
+    val currentData = makeHistoricData(accumulators, validationListenerCopy)
+    config.rules.exists(rule => rule.validate(oldRuns, currentData))
   }
-  private def saveCounters(): Boolean = {
+  private def makeHistoricData(accumulators: typedAccumulators, vl: ValidationListener) = {
     // Make the HistoricData object
     val historicDataBuilder = HistoricData.newBuilder()
-    accumulators.map{case (key, value) =>
+    /*accumulatorsValues.map{case (key, value) =>
       historicDataBuilder.addUserCounters(
-        CounterInfo.newBuilder.value(value).name(key).build())}
-    validationListener.toMap().map{case (key, value) =>
+        CounterInfo.newBuilder().value(makeNumeric(value)).name(key).build())}
+    vl.toMap().map{case (key, value) =>
       historicDataBuilder.addInternalCounters(
-        CounterInfo.newBuilder.value(value).name(key).build())}
-    val historicData = historicDataBuilder.build()
-    val historicDataByes = historicData.toByteArray()
-    val historicDataDebug = historicData.toString()
-    sc.parallelize(List(nil, historicDataBytes))
-      .saveAsSequenceFile(conf.jobBasePath + "/" + conf.jobDir + "/validator/HistoricDataSequenceFile")
+        CounterInfo.newBuilder().value(makePBNumeric(value)).name(key).build())}
+     */
+    historicDataBuilder.build()
   }
+  private def saveCounters(historicData: HistoricData, success: Boolean) = {
+    val prefix = success match {
+      case true => "_SUCCESS"
+      case false => "_FAILURE"
+    }
+    val historicDataBytes = historicData.toByteArray()
+    val historicDataDebug = historicData.toString()
+    sc.parallelize(List((null, historicDataBytes)))
+      .saveAsSequenceFile(config.jobBasePath + "/" + config.jobDir + "/validator/HistoricDataSequenceFile" + prefix)
+  }
+
   private def findOldCounters() = {
     List(HistoricData.newBuilder().build());
   }
