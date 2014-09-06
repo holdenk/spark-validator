@@ -4,9 +4,6 @@ version := "0.0.1"
 
 scalaVersion := "2.10.3"
 
-// protocol buffer support
-seq(sbtprotobuf.ProtobufPlugin.protobufSettings: _*)
-
 // additional libraries
 libraryDependencies ++= Seq(
   "org.apache.spark" %% "spark-core" % "1.0.0"
