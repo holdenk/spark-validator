@@ -8,6 +8,8 @@ import scala.collection.mutable.HashMap
 import org.apache.spark.SparkContext
 import org.apache.spark.Accumulator
 
+import com.holdenkarau.spark_validator.HistoricDataProtos.HistoricData
+
 class Validation(sc: SparkContext, config: ValidationConf) {
   protected val accumulators = new HashMap[String, Accumulator[Numeric[_]]]()
   protected val validationListener = new ValidationListener()
@@ -35,24 +37,22 @@ class Validation(sc: SparkContext, config: ValidationConf) {
     val oldRuns = findOldCounters()
     config.rules.exists(rule => rule.validate(oldRuns, validationListenerCopy, accumulatorsValues))
   }
-  /*
-   * Saves the counters out as sequence & text files. Text files are for human debugging and
-   * sequence files are for future runs of the validation program */
-  private def saveCounters(accumulatorsValues: Map[String, Numeric[_]], vl: ValidationListener, pass: Boolean): Boolean = {
+  private def saveCounters(): Boolean = {
     // Make the HistoricData object
-    val prefix = pass match {
-      case true => "_SUCCESS"
-      case false => "_FAILURE"
-    }
-    val userData = sc.parallelize(accumulatorsValues.toSeq)
-    userData.saveAsSequenceFile(conf.jobBasePath + "/" + conf.jobDir + "/validator/HistoricUserDataSequenceFile" + prefix)
-    userData.saveTextFile(conf.jobBasePath + "/" + conf.jobDir + "/validator/HistoricUserDataTextFile" + prefix)
-    val internalData = sc.parallelize(vl.toMap().toSeq)
-    internalData.saveAsSequenceFile(conf.jobBasePath + "/" + conf.jobDir + "/validator/HistoricInternalDataSequenceFile" + prefix)
-    internalData.saveAsTextFile(conf.jobBasePath + "/" + conf.jobDir + "/validator/HistoricInternalDataTextFile" + prefix)
+    val historicDataBuilder = HistoricData.newBuilder()
+    accumulators.map{case (key, value) =>
+      historicDataBuilder.addUserCounters(
+        CounterInfo.newBuilder.value(value).name(key).build())}
+    validationListener.toMap().map{case (key, value) =>
+      historicDataBuilder.addInternalCounters(
+        CounterInfo.newBuilder.value(value).name(key).build())}
+    val historicData = historicDataBuilder.build()
+    val historicDataByes = historicData.toByteArray()
+    val historicDataDebug = historicData.toString()
+    sc.parallelize(List(nil, historicDataBytes))
+      .saveAsSequenceFile(conf.jobBasePath + "/" + conf.jobDir + "/validator/HistoricDataSequenceFile")
   }
-
   private def findOldCounters() = {
-    List(HistoricData(null, null));
+    List(HistoricData.newBuilder().build());
   }
 }
