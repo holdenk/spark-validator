@@ -63,7 +63,10 @@ class Validation(sc: SparkContext, config: ValidationConf) {
     val oldRuns = findOldCounters()
     // Format the current data
     val currentData = makeHistoricData(accumulators, validationListenerCopy)
-    config.rules.exists(rule => rule.validate(oldRuns, currentData))
+    // Run through all of our rules until one fails
+    val failedRuleOption = config.rules.find(rule => ! rule.validate(oldRuns, currentData))
+    // if we failed return false otherwise return true
+    failedRuleOption.map(_ => false).getOrElse(true)
   }
   private def makeHistoricData(accumulators: typedAccumulators, vl: ValidationListener) = {
     // Make the HistoricData object
