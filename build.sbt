@@ -25,9 +25,6 @@ sparkComponents ++= Seq("core", "streaming")
 // additional libraries
 libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.1"
 
-// protocol buffer support
-seq(sbtprotobuf.ProtobufPlugin.protobufSettings: _*)
-
 scalacOptions ++= Seq("-deprecation", "-unchecked")
 
 pomIncludeRepository := { x => false }

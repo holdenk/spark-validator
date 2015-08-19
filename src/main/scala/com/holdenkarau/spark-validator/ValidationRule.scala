@@ -3,8 +3,6 @@
  */
 package com.holdenkarau.spark_validator
 
-import com.holdenkarau.spark_validator.HistoricDataProtos.HistoricData
-
 abstract class ValidationRule {
   def validate(historicData: List[HistoricData], current: HistoricData): Boolean
 }

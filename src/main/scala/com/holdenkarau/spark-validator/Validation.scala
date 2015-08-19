@@ -9,9 +9,6 @@ import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
 import org.apache.spark.Accumulator
 
-import com.holdenkarau.spark_validator.HistoricDataProtos.CounterInfo
-import com.holdenkarau.spark_validator.HistoricDataProtos.HistoricData
-
 class Validation(sc: SparkContext, config: ValidationConf) {
   case class typedAccumulators(
     doubles: HashMap[String, Accumulator[Double]],
@@ -70,7 +67,7 @@ class Validation(sc: SparkContext, config: ValidationConf) {
   }
   private def makeHistoricData(accumulators: typedAccumulators, vl: ValidationListener) = {
     // Make the HistoricData object
-    val historicDataBuilder = HistoricData.newBuilder()
+    //val historicDataBuilder = HistoricData.newBuilder()
     /*accumulatorsValues.map{case (key, value) =>
       historicDataBuilder.addUserCounters(
         CounterInfo.newBuilder().value(makeNumeric(value)).name(key).build())}
@@ -78,20 +75,20 @@ class Validation(sc: SparkContext, config: ValidationConf) {
       historicDataBuilder.addInternalCounters(
         CounterInfo.newBuilder().value(makePBNumeric(value)).name(key).build())}
      */
-    historicDataBuilder.build()
+    //historicDataBuilder.build()
   }
   private def saveCounters(historicData: HistoricData, success: Boolean) = {
     val prefix = success match {
-      case true => "_SUCCESS"
-      case false => "_FAILURE"
+      case true => "SUCCESS"
+      case false => "FAILURE"
     }
-    val historicDataBytes = historicData.toByteArray()
-    val historicDataDebug = historicData.toString()
-    sc.parallelize(List((null, historicDataBytes)))
-      .saveAsSequenceFile(config.jobBasePath + "/" + config.jobDir + "/validator/HistoricDataSequenceFile" + prefix)
+    import sqlContext.implicits._
+    val data = sc.parallelize(historicData)
+    val path = config.jobBasePath + "/" + config.jobDir + "/validator/HistoricDataParquet/status=" + prefix + "/id="+id+"/"
+    data.write.format("parquet").save(path)
   }
 
   private def findOldCounters() = {
-    List(HistoricData.newBuilder().build());
+    //List(HistoricData.newBuilder().build());
   }
 }
