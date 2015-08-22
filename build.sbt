@@ -20,7 +20,9 @@ javacOptions ++= Seq("-source", "1.7", "-target", "1.7")
 
 spName := "holdenk/spark-validator"
 
-sparkComponents ++= Seq("core", "streaming")
+sparkVersion := "1.4.1"
+
+sparkComponents ++= Seq("core", "sql")
 
 // additional libraries
 libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.1"
