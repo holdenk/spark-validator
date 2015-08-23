@@ -73,11 +73,17 @@ class Validation(sc: SparkContext, sqlContext: SQLContext, config: ValidationCon
   private def makeHistoricData(id: Long, accumulators: typedAccumulators, vl: ValidationListener):
       HistoricData = {
     val counters = accumulators.doubles.map{case (key, value) =>
-      CounterInfo(key, true, value.value)
+      (key, value.value.toLong) // We loose info, but w/e
+    } ++
+    accumulators.longs.map{case (key, value) =>
+      (key, value.value) // We loose info, but w/e
+    } ++
+    accumulators.ints.map{case (key, value) =>
+      (key, value.value.toLong) // We loose info, but w/e
     } ++ vl.toMap().map{case (key, value) =>
-        CounterInfo(key, false, value)
+        (key, value)
     }
-    HistoricData(id, counters.toList)
+    HistoricData(id, counters.toMap)
   }
   private def saveCounters(historicData: HistoricData, success: Boolean) = {
     val prefix = success match {
@@ -86,7 +92,7 @@ class Validation(sc: SparkContext, sqlContext: SQLContext, config: ValidationCon
     }
     import sqlContext.implicits._
     val id = historicData.jobid
-    val data = sqlContext.createDataFrame(historicData.counters)
+    val data = sqlContext.createDataFrame(historicData.counters.toList)
     val path = config.jobBasePath + "/" + config.jobDir + "/validator/HistoricDataParquet/status=" + prefix + "/id="+id+"/"
     data.write.format("parquet").save(path)
   }

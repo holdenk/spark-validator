@@ -37,4 +37,18 @@ class SparkContextSchedulerCreationSuite
     sc.stop()
     assert(v.validate(2) === false)
   }
+
+  test("basic rule, expected success") {
+    val sc = new SparkContext("local", "test")
+    val vc = new ValidationConf(tempPath, "1", true,
+      List[ValidationRule](
+        new AbsoluteSparkCounterValidationRule("duration", Some(1), Some(10)))
+    )
+    val v = Validation(sc, vc)
+    val acc = sc.accumulator(0)
+    v.registerAccumulator(acc, "acc")
+    sc.parallelize(1.to(10)).foreach(acc += _)
+    sc.stop()
+    assert(v.validate(3) === true)
+  }
 }

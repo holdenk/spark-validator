@@ -21,8 +21,8 @@ class ValidationListener extends SparkListener {
     tasksToMap()
   }
 
-  private def tasksToMap(): immutable.Map[String, Long] = {
-    taskInfoMetrics.flatMap{case (taskInfo, metrics) =>
+  private def tasksToMap(): Map[String, Long] = {
+    val tim = taskInfoMetrics.map{case (taskInfo, metrics) =>
       val keyPrefix = s"taskinfo.${taskInfo.taskId}.${taskInfo.attempt}"
       val kvs = Seq(("launchTime", taskInfo.launchTime),
         ("successful", taskInfo.successful match {
@@ -30,8 +30,16 @@ class ValidationListener extends SparkListener {
           case fasle => 0L
         }),
         ("duration" , taskInfo.duration)) ++ taskMetricsToMap(metrics)
-      kvs.map{case (k, v) => (keyPrefix + k, v)}
-    }.toMap
+      (keyPrefix, kvs)
+    }
+    // Aggregate the keys across all tasks
+    val globals = tim.foldLeft(mutable.Map[String, Long]()){(acc, nv) =>
+      nv._2.foreach{case (k, v) =>
+        acc(k) = (acc.get(k).getOrElse(0L) + v)
+      }
+      acc}.toMap
+    val per = tim.flatMap{case (keyPrefix, kvs) => kvs.map{case (k, v) => (keyPrefix + k , v)}}
+    globals ++ per
   }
   private def taskMetricsToMap(metrics: TaskMetrics): Seq[(String, Long)] = {
     Seq(

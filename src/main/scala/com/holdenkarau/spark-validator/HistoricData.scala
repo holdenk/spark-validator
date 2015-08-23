@@ -3,6 +3,4 @@
  */
 package com.holdenkarau.spark_validator
 
-case class CounterInfo(name: String, internal: Boolean, value: Double)
-
-case class HistoricData(jobid: Long, counters: List[CounterInfo])
+case class HistoricData(jobid: Long, counters: Map[String, Long])
