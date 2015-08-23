@@ -5,11 +5,12 @@ package com.holdenkarau.spark_validator
 
 import scala.collection.mutable.HashMap
 
+import org.apache.spark.Accumulator
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
-import org.apache.spark.Accumulator
+import org.apache.spark.sql._
 
-class Validation(sc: SparkContext, config: ValidationConf) {
+class Validation(sc: SparkContext, sqlContext: SQLContext, config: ValidationConf) {
   case class typedAccumulators(
     doubles: HashMap[String, Accumulator[Double]],
     ints: HashMap[String, Accumulator[Int]],
@@ -50,32 +51,33 @@ class Validation(sc: SparkContext, config: ValidationConf) {
   /*
    * Validates a run of a Spark Job. Returns true if the job is valid and
    * also adds a SUCCESS marker to the path specified.
+   * Takes in a jobid, jobids should be monotonically increasing and unique per job.
    */
-  def validate(): Boolean = {
+  def validate(jobid: Long): Boolean = {
     // Make a copy of the validation listener so that if we trigger
-    // an work on the spark context this does not update our counters from this point
+    // any work on the spark context this does not update our counters from this point
     // forward.
     val validationListenerCopy = validationListener.copy()
     // Also fetch all the accumulators values
     val oldRuns = findOldCounters()
     // Format the current data
-    val currentData = makeHistoricData(accumulators, validationListenerCopy)
+    val currentData = makeHistoricData(jobid, accumulators, validationListenerCopy)
     // Run through all of our rules until one fails
     val failedRuleOption = config.rules.find(rule => ! rule.validate(oldRuns, currentData))
     // if we failed return false otherwise return true
     failedRuleOption.map(_ => false).getOrElse(true)
   }
-  private def makeHistoricData(accumulators: typedAccumulators, vl: ValidationListener) = {
-    // Make the HistoricData object
-    //val historicDataBuilder = HistoricData.newBuilder()
-    /*accumulatorsValues.map{case (key, value) =>
-      historicDataBuilder.addUserCounters(
-        CounterInfo.newBuilder().value(makeNumeric(value)).name(key).build())}
-    vl.toMap().map{case (key, value) =>
-      historicDataBuilder.addInternalCounters(
-        CounterInfo.newBuilder().value(makePBNumeric(value)).name(key).build())}
-     */
-    //historicDataBuilder.build()
+  /*
+   * Convert both Spark counters & user counters into a HistoricData object
+   */
+  private def makeHistoricData(id: Long, accumulators: typedAccumulators, vl: ValidationListener):
+      HistoricData = {
+    val counters = accumulators.doubles.map{case (key, value) =>
+      CounterInfo(key, true, value.value)
+    } ++ vl.toMap().map{case (key, value) =>
+        CounterInfo(key, false, value)
+    }
+    HistoricData(id, counters.toList)
   }
   private def saveCounters(historicData: HistoricData, success: Boolean) = {
     val prefix = success match {
@@ -83,12 +85,13 @@ class Validation(sc: SparkContext, config: ValidationConf) {
       case false => "FAILURE"
     }
     import sqlContext.implicits._
-    val data = sc.parallelize(historicData)
+    val id = historicData.jobid
+    val data = sqlContext.createDataFrame(historicData.counters)
     val path = config.jobBasePath + "/" + config.jobDir + "/validator/HistoricDataParquet/status=" + prefix + "/id="+id+"/"
     data.write.format("parquet").save(path)
   }
 
-  private def findOldCounters() = {
-    //List(HistoricData.newBuilder().build());
+  private def findOldCounters(): List[HistoricData] = {
+    List[HistoricData]()
   }
 }

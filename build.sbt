@@ -25,7 +25,9 @@ sparkVersion := "1.4.1"
 sparkComponents ++= Seq("core", "sql")
 
 // additional libraries
-libraryDependencies += "org.scalatest" %% "scalatest" % "2.2.1"
+libraryDependencies ++= Seq(
+  "org.scalatest" %% "scalatest" % "2.2.1",
+  "com.holdenkarau" %% "spark-testing-base" % "1.4.1_0.1.1")
 
 scalacOptions ++= Seq("-deprecation", "-unchecked")
 

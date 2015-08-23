@@ -3,6 +3,8 @@
  */
 package com.holdenkarau.spark_validator
 
+import org.apache.spark.sql._
+
 abstract class ValidationRule {
   def validate(historicData: List[HistoricData], current: HistoricData): Boolean
 }
