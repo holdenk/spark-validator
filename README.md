@@ -2,6 +2,8 @@
 
 A library you can include in your Spark job to validate the counters and perform operations on success.
 
+This software should be considered pre-alpha.
+
 ## Why you should validate counters
 
 Maybe you are really lucky and you never have intermitent outages or bugs in your code.
