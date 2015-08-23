@@ -95,3 +95,12 @@ class Validation(sc: SparkContext, sqlContext: SQLContext, config: ValidationCon
     List[HistoricData]()
   }
 }
+
+object Validation {
+  def apply(sc: SparkContext, sqlContext: SQLContext, config: ValidationConf): Validation = {
+    new Validation(sc, sqlContext, config)
+  }
+  def apply(sc: SparkContext, config: ValidationConf): Validation = {
+    new Validation(sc, new SQLContext(sc), config)
+  }
+}

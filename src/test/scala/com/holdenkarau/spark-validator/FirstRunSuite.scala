@@ -16,8 +16,8 @@ class SparkContextSchedulerCreationSuite
     val sc = new SparkContext("local", "test")
     val tempPath = Files.createTempDirectory(null).toString()
     val vc = new ValidationConf(tempPath, "1", true, List[ValidationRule]())
-    val v = new Validation(sc, vc)
+    val v = Validation(sc, vc)
     sc.stop()
-    assert(v.validate() === true)
+    assert(v.validate(1) === true)
   }
 }
