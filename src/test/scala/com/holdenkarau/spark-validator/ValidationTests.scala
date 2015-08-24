@@ -9,7 +9,7 @@ import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
 import java.nio.file.Files;
 
-class SparkContextSchedulerCreationSuite
+class ValidationTests
   extends FunSuite {
   val tempPath = Files.createTempDirectory(null).toString()
   // TODO(holden): factor out a bunch of stuff but lets add a first test as a starting point
