@@ -9,6 +9,7 @@ import org.apache.spark.Accumulator
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
 import org.apache.spark.sql._
+import org.apache.spark.sql.types._
 
 class Validation(sc: SparkContext, sqlContext: SQLContext, config: ValidationConf) {
   case class typedAccumulators(
@@ -65,7 +66,9 @@ class Validation(sc: SparkContext, sqlContext: SQLContext, config: ValidationCon
     // Run through all of our rules until one fails
     val failedRuleOption = config.rules.find(rule => ! rule.validate(oldRuns, currentData))
     // if we failed return false otherwise return true
-    failedRuleOption.map(_ => false).getOrElse(true)
+    val result = failedRuleOption.map(_ => false).getOrElse(true)
+    saveCounters(currentData, result)
+    result
   }
   /*
    * Convert both Spark counters & user counters into a HistoricData object
@@ -92,7 +95,10 @@ class Validation(sc: SparkContext, sqlContext: SQLContext, config: ValidationCon
     }
     import sqlContext.implicits._
     val id = historicData.jobid
-    val data = sqlContext.createDataFrame(historicData.counters.toList)
+    val schema = StructType(List(StructField("counterName", StringType, false),
+      StructField("value", LongType, false)))
+    val rows = sc.parallelize(historicData.counters.toList).map(kv => Row(kv._1, kv._2))
+    val data = sqlContext.createDataFrame(rows, schema)
     val path = config.jobBasePath + "/" + config.jobDir + "/validator/HistoricDataParquet/status=" + prefix + "/id="+id+"/"
     data.write.format("parquet").save(path)
   }

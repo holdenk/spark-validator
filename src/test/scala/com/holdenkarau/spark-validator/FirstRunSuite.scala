@@ -20,8 +20,8 @@ class SparkContextSchedulerCreationSuite
     val acc = sc.accumulator(0)
     v.registerAccumulator(acc, "acc")
     sc.parallelize(1.to(10)).foreach(acc += _)
-    sc.stop()
     assert(v.validate(1) === true)
+    sc.stop()
   }
 
   test("sample expected failure") {
@@ -34,8 +34,8 @@ class SparkContextSchedulerCreationSuite
     val acc = sc.accumulator(0)
     v.registerAccumulator(acc, "acc")
     sc.parallelize(1.to(10)).foreach(acc += _)
-    sc.stop()
     assert(v.validate(2) === false)
+    sc.stop()
   }
 
   test("basic rule, expected success") {
@@ -48,7 +48,7 @@ class SparkContextSchedulerCreationSuite
     val acc = sc.accumulator(0)
     v.registerAccumulator(acc, "acc")
     sc.parallelize(1.to(10)).foreach(acc += _)
-    sc.stop()
     assert(v.validate(3) === true)
+    sc.stop()
   }
 }
