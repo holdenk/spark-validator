@@ -14,18 +14,15 @@ class ValidationTests
   val tempPath = Files.createTempDirectory(null).toString()
   // TODO(holden): factor out a bunch of stuff but lets add a first test as a starting point
   test("null validation test") {
-    val sc = new SparkContext("local", "test")
     val vc = new ValidationConf(tempPath, "1", true, List[ValidationRule]())
     val v = Validation(sc, vc)
     val acc = sc.accumulator(0)
     v.registerAccumulator(acc, "acc")
     sc.parallelize(1.to(10)).foreach(acc += _)
     assert(v.validate(1) === true)
-    sc.stop()
   }
 
   test("sample expected failure") {
-    val sc = new SparkContext("local", "test")
     val vc = new ValidationConf(tempPath, "1", true,
       List[ValidationRule](
         new AbsoluteSparkCounterValidationRule("taskinfo.0.0resultSerializationTime", Some(100), None))
@@ -35,11 +32,9 @@ class ValidationTests
     v.registerAccumulator(acc, "acc")
     sc.parallelize(1.to(10)).foreach(acc += _)
     assert(v.validate(2) === false)
-    sc.stop()
   }
 
   test("basic rule, expected success") {
-    val sc = new SparkContext("local", "test")
     val vc = new ValidationConf(tempPath, "1", true,
       List[ValidationRule](
         new AbsoluteSparkCounterValidationRule("duration", Some(1), Some(10)))
@@ -49,6 +44,5 @@ class ValidationTests
     v.registerAccumulator(acc, "acc")
     sc.parallelize(1.to(10)).foreach(acc += _)
     assert(v.validate(3) === true)
-    sc.stop()
   }
 }
