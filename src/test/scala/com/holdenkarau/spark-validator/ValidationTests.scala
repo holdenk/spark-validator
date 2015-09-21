@@ -1,16 +1,17 @@
 /*
- * Verifys that the Spark Validator functions at least somewhat on first run
+ * Verifies that the Spark Validator functions at least somewhat on first run
  */
 
 package com.holdenkarau.spark_validator
+
+import com.holdenkarau.spark.testing._
 
 import org.scalatest.{Assertions, BeforeAndAfterEach, FunSuite}
 import org.apache.spark.SparkContext
 import org.apache.spark.SparkContext._
 import java.nio.file.Files;
 
-class ValidationTests
-  extends FunSuite {
+class ValidationTests extends FunSuite with SharedSparkContext {
   val tempPath = Files.createTempDirectory(null).toString()
   // TODO(holden): factor out a bunch of stuff but lets add a first test as a starting point
   test("null validation test") {
