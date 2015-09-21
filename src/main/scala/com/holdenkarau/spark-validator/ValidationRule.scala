@@ -3,14 +3,16 @@
  */
 package com.holdenkarau.spark_validator
 
+import scala.collection.IndexedSeq
+
 import org.apache.spark.sql._
 
 abstract class ValidationRule {
-  def validate(historicData: List[HistoricData], current: HistoricData): Boolean
+  def validate(historicData: IndexedSeq[HistoricData], current: HistoricData): Boolean
 }
 
 abstract class NoHistoryValidationRule extends ValidationRule {
-  override def validate(historicData: List[HistoricData], current: HistoricData): Boolean = {
+  override def validate(historicData: IndexedSeq[HistoricData], current: HistoricData): Boolean = {
     validate(current)
   }
   def validate(current: HistoricData): Boolean
@@ -22,7 +24,7 @@ abstract class NoHistoryValidationRule extends ValidationRule {
  */
 case class AvgRule(counterName: String,
   maxDiff: Long, histLength: Option[Int], newCounter: Boolean=false) extends ValidationRule {
-  override def validate(historicData: List[HistoricData], current: HistoricData): Boolean = {
+  override def validate(historicData: IndexedSeq[HistoricData], current: HistoricData): Boolean = {
     val samples = histLength.map(historicData.take(_)).getOrElse(historicData)
     val data = if (!newCounter) {
       samples.map(_.counters.get(counterName).get)
@@ -30,7 +32,7 @@ case class AvgRule(counterName: String,
       samples.flatMap(_.counters.get(counterName))
     }
 
-    data match {
+    data.toList match {
       case Nil => newCounter
       case head :: tail => {
       val avg = tail.foldLeft((head.toDouble, 1.0))((r: (Double, Double), c: Long) =>
@@ -50,7 +52,6 @@ case class AvgRule(counterName: String,
 case class AbsoluteSparkCounterValidationRule(counterName: String,
   min: Option[Long], max: Option[Long]) extends NoHistoryValidationRule {
   override def validate(current: HistoricData): Boolean = {
-    println("Validating on "+current)
     val value = current.counters.get(counterName).get.asInstanceOf[Long]
     min.map(_ < value).getOrElse(true) && max.map(value < _).getOrElse(true)
   }

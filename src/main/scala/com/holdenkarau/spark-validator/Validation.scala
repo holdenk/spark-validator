@@ -60,7 +60,7 @@ class Validation(sc: SparkContext, sqlContext: SQLContext, config: ValidationCon
     // forward.
     val validationListenerCopy = validationListener.copy()
     // Also fetch all the accumulators values
-    val oldRuns = findOldCounters()
+    val oldRuns = findOldHistoricData()
     // Format the current data
     val currentData = makeHistoricData(jobid, accumulators, validationListenerCopy)
     // Run through all of our rules until one fails
@@ -99,12 +99,50 @@ class Validation(sc: SparkContext, sqlContext: SQLContext, config: ValidationCon
       StructField("value", LongType, false)))
     val rows = sc.parallelize(historicData.counters.toList).map(kv => Row(kv._1, kv._2))
     val data = sqlContext.createDataFrame(rows, schema)
-    val path = config.jobBasePath + "/" + config.jobDir + "/validator/HistoricDataParquet/status=" + prefix + "/id="+id+"/"
-    data.write.format("parquet").save(path)
+    val path = config.jobBasePath + "/" + config.jobDir +
+      "/validator/HistoricDataParquet/status=" + prefix + "/id="+id
+    data.write.parquet(path)
   }
 
-  private def findOldCounters(): List[HistoricData] = {
-    List[HistoricData]()
+  /*
+   * Get the Historic Data as an Array
+   */
+  private def findOldHistoricData(): Array[HistoricData] = {
+    val inputDF = findOldCounters()
+    inputDF match {
+      case Some(df) => {
+        val historicDataRDD = df.select("id", "counterName", "value").rdd
+          .map{row => (
+            try {
+              row.getLong(0)
+            } catch {
+              case e: Exception => row.getInt(0).toLong
+            },
+            (row.getString(1), row.getLong(2)))}
+          .groupByKey()
+          .map{case (k, counters) => HistoricData(k, counters.toMap)}
+        historicDataRDD.collect()
+      }
+      case None => {
+        new Array[HistoricData](0)
+      }
+    }
+  }
+
+  /*
+   * Return a DataFrame of the old counters (for SQL funtimes)
+   */
+  private def findOldCounters(): Option[DataFrame] = {
+    val base = config.jobBasePath + "/" + config.jobDir
+    val path = base + "/validator/HistoricDataParquet/status=SUCCESS"
+    // Spark SQL doesn't handle empty directories very well...
+    val fs = org.apache.hadoop.fs.FileSystem.get(sc.hadoopConfiguration)
+    if (fs.exists(new org.apache.hadoop.fs.Path(path))) {
+      val inputDF = sqlContext.read.parquet(path)
+      Some(inputDF)
+    } else {
+      None
+    }
   }
 }
 

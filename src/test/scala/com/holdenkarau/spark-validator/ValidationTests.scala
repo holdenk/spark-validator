@@ -14,6 +14,7 @@ import java.nio.file.Files;
 class ValidationTests extends FunSuite with SharedSparkContext {
   val tempPath = Files.createTempDirectory(null).toString()
   // TODO(holden): factor out a bunch of stuff but lets add a first test as a starting point
+
   test("null validation test") {
     val vc = new ValidationConf(tempPath, "1", true, List[ValidationRule]())
     val v = Validation(sc, vc)
@@ -22,6 +23,7 @@ class ValidationTests extends FunSuite with SharedSparkContext {
     sc.parallelize(1.to(10)).foreach(acc += _)
     assert(v.validate(1) === true)
   }
+
 
   test("sample expected failure") {
     val vc = new ValidationConf(tempPath, "1", true,
@@ -38,7 +40,7 @@ class ValidationTests extends FunSuite with SharedSparkContext {
   test("basic rule, expected success") {
     val vc = new ValidationConf(tempPath, "1", true,
       List[ValidationRule](
-        new AbsoluteSparkCounterValidationRule("duration", Some(1), Some(10)))
+        new AbsoluteSparkCounterValidationRule("duration", Some(1), Some(100)))
     )
     val v = Validation(sc, vc)
     val acc = sc.accumulator(0)
