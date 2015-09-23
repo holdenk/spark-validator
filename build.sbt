@@ -24,6 +24,8 @@ sparkVersion := "1.4.1"
 
 sparkComponents ++= Seq("core", "sql")
 
+parallelExecution in Test := false
+
 // additional libraries
 libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "2.2.1",

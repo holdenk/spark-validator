@@ -23,7 +23,7 @@ abstract class NoHistoryValidationRule extends ValidationRule {
  * maxDiff is an absolute
  */
 case class AvgRule(counterName: String,
-  maxDiff: Long, histLength: Option[Int], newCounter: Boolean=false) extends ValidationRule {
+  maxDiff: Double, histLength: Option[Int], newCounter: Boolean=false) extends ValidationRule {
   override def validate(historicData: IndexedSeq[HistoricData], current: HistoricData): Boolean = {
     val samples = histLength.map(historicData.take(_)).getOrElse(historicData)
     val data = if (!newCounter) {
