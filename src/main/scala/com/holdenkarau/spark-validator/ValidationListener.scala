@@ -12,7 +12,6 @@ import org.apache.spark.executor.TaskMetrics
 class ValidationListener extends SparkListener {
 
   private val taskInfoMetrics = mutable.Buffer[(TaskInfo, TaskMetrics)]()
-  // TODO: Determine if we need this
   private val stageMetrics = mutable.Buffer[StageInfo]()
   /**
    * Create a map representing the counters and info from this job
@@ -41,6 +40,7 @@ class ValidationListener extends SparkListener {
     val per = tim.flatMap{case (keyPrefix, kvs) => kvs.map{case (k, v) => (keyPrefix + k , v)}}
     globals ++ per
   }
+
   private def taskMetricsToMap(metrics: TaskMetrics): Seq[(String, Long)] = {
     Seq(
       ("executorRunTime", metrics.executorRunTime),
@@ -86,6 +86,10 @@ class ValidationListener extends SparkListener {
       taskInfoMetrics += ((info, metrics))
     }
   }
+
+  override def onJobEnd(jobEnd: SparkListenerJobEnd) {
+  }
+
   def copy(): ValidationListener = {
     val other = new ValidationListener()
     taskInfoMetrics.copyToBuffer(other.taskInfoMetrics)

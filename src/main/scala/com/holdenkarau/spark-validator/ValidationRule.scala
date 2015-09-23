@@ -52,7 +52,8 @@ case class AvgRule(counterName: String,
 case class AbsoluteSparkCounterValidationRule(counterName: String,
   min: Option[Long], max: Option[Long]) extends NoHistoryValidationRule {
   override def validate(current: HistoricData): Boolean = {
-    val value = current.counters.get(counterName).get.asInstanceOf[Long]
+    val option = current.counters.get(counterName)
+    val value = option.get.asInstanceOf[Long]
     min.map(_ < value).getOrElse(true) && max.map(value < _).getOrElse(true)
   }
 }
