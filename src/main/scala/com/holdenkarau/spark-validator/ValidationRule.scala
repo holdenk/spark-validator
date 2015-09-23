@@ -25,7 +25,7 @@ abstract class NoHistoryValidationRule extends ValidationRule {
 case class AvgRule(counterName: String,
   maxDiff: Double, histLength: Option[Int], newCounter: Boolean=false) extends ValidationRule {
   override def validate(historicData: IndexedSeq[HistoricData], current: HistoricData): Boolean = {
-    val samples = histLength.map(historicData.take(_)).getOrElse(historicData)
+    val samples = histLength.filter(_ <= 0).map(historicData.take(_)).getOrElse(historicData)
     val data = if (!newCounter) {
       samples.map(_.counters.get(counterName).get)
     } else {
