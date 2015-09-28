@@ -57,4 +57,26 @@ class HistoricValidationTests extends FunSuite with SharedSparkContext {
     runSimpleJob(sc, acc)
     assert(v.validate(3) === true)
   }
+
+  test("validate historic new counter") {
+    val vc = new ValidationConf(tempPath, "1", true,
+      List[ValidationRule](new AvgRule("acc2", 0.001, Some(200), newCounter=true)))
+    val v = Validation(sc, vc)
+    val acc = sc.accumulator(0)
+    v.registerAccumulator(acc, "acc2")
+    runSimpleJob(sc, acc)
+    assert(v.validate(4) === true)
+  }
+
+  test("out of range") {
+    val vc = new ValidationConf(tempPath, "1", true,
+      List[ValidationRule](new AvgRule("acc", 0.001, Some(200))))
+    val v = Validation(sc, vc)
+    val acc = sc.accumulator(0)
+    v.registerAccumulator(acc, "acc")
+    // Run twice so we get a higher acc value
+    runSimpleJob(sc, acc)
+    runSimpleJob(sc, acc)
+    assert(v.validate(5) === false)
+  }
 }
