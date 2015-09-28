@@ -49,6 +49,7 @@ class Validation(sc: SparkContext, sqlContext: SQLContext, config: ValidationCon
     accumulators.floats += ((name, accumulator))
   }
 
+  // TODO Add API returning list of failed rules
   /*
    * Validates a run of a Spark Job. Returns true if the job is valid and
    * also adds a SUCCESS marker to the path specified.
@@ -64,9 +65,12 @@ class Validation(sc: SparkContext, sqlContext: SQLContext, config: ValidationCon
     // Format the current data
     val currentData = makeHistoricData(jobid, accumulators, validationListenerCopy)
     // Run through all of our rules until one fails
-    val failedRuleOption = config.rules.find(rule => ! rule.validate(oldRuns, currentData))
+    val failedRules = config.rules.flatMap(rule => rule.validate(oldRuns, currentData))
+    if (!failedRules.isEmpty) {
+      println("Failed rules include "+failedRules)
+    }
     // if we failed return false otherwise return true
-    val result = failedRuleOption.map(_ => false).getOrElse(true)
+    val result = failedRules.isEmpty
     saveCounters(currentData, result)
     result
   }
