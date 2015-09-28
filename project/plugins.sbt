@@ -13,3 +13,5 @@ addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.10.2")
 addSbtPlugin("org.spark-packages" % "sbt-spark-package" % "0.2.2")
 
 addSbtPlugin("org.scalastyle" %% "scalastyle-sbt-plugin" % "0.6.0")
+
+addSbtPlugin("org.scoverage" % "sbt-scoverage" % "1.1.0")
