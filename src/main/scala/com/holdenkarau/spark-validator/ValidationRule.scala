@@ -68,11 +68,15 @@ case class AbsoluteSparkCounterValidationRule(counterName: String,
   min: Option[Long], max: Option[Long]) extends NoHistoryValidationRule {
   override def validate(current: HistoricData): Option[String] = {
     val option = current.counters.get(counterName)
-    val value = option.get.asInstanceOf[Long]
-    if (min.map(_ < value).getOrElse(true) && max.map(value < _).getOrElse(true)) {
-      None
+    if (option.isDefined) {
+      val value = option.get.asInstanceOf[Long]
+      if (min.map(_ < value).getOrElse(true) && max.map(value < _).getOrElse(true)) {
+        None
+      } else {
+        Some(s"Value ${value} was not in range ${min},${max}")
+      }
     } else {
-      Some("Value ${value} was not in range ${min},${max}")
+      Some(s"Failed to find key ${counterName} in ${current.counters}")
     }
   }
 }
