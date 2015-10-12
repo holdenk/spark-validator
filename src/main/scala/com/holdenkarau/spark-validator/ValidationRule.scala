@@ -80,3 +80,28 @@ case class AbsoluteSparkCounterValidationRule(counterName: String,
     }
   }
 }
+
+/**
+ * Helper class to make it easy to write a two counter relative
+ * rule with an absolute min/max. Note: assumes that the keys is present.
+ */
+case class AbsolutePercentageSparkCounterValidationRule(
+  numeratorCounterName: String, denominatorCounterName: String,
+  min: Option[Double], max: Option[Double]) extends NoHistoryValidationRule {
+  override def validate(current: HistoricData): Option[String] = {
+    val numeratorOption = current.counters.get(numeratorCounterName)
+    val denominatorOption = current.counters.get(denominatorCounterName)
+    if (numeratorOption.isDefined && denominatorOption.isDefined) {
+      val value = (numeratorOption.get.asInstanceOf[Long].toDouble /
+        denominatorOption.get.asInstanceOf[Long].toDouble)
+      if (min.map(_ < value).getOrElse(true) && max.map(value < _).getOrElse(true)) {
+        None
+      } else {
+        Some(s"Value ${value} was not in range ${min},${max}")
+      }
+    } else {
+      Some(s"Failed to find keys ${numeratorCounterName}, ${denominatorCounterName} in " +
+        s" ${current.counters}")
+    }
+  }
+}
