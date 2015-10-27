@@ -1,7 +1,7 @@
 /*
  * Listener to collect Spark execution information.
  */
-package com.holdenkarau.spark_validator
+package com.holdenkarau.spark.validator
 
 import scala.collection.mutable
 import scala.collection.immutable

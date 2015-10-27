@@ -1,7 +1,7 @@
 /*
  * Make it easy to check counters after our Spark job runs.
  */
-package com.holdenkarau.spark_validator
+package com.holdenkarau.spark.validator
 
 import scala.collection.mutable.HashMap
 

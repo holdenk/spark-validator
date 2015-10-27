@@ -2,7 +2,7 @@
  * Verifies that rules involving history work
  */
 
-package com.holdenkarau.spark_validator
+package com.holdenkarau.spark.validator
 
 import com.holdenkarau.spark.testing._
 

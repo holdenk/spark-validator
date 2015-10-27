@@ -2,7 +2,7 @@
  * Verifies that the Spark Validator functions at least somewhat on first run
  */
 
-package com.holdenkarau.spark_validator
+package com.holdenkarau.spark.validator
 
 import com.holdenkarau.spark.testing._
 
