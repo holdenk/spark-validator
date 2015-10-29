@@ -141,9 +141,9 @@ class ValidationTests extends FunSuite with SharedSparkContext {
     v.registerAccumulator(valid, "validRecords")
     v.registerAccumulator(invalid, "invalidRecords")
     runTwoCounterJob(sc, valid, invalid)
-    val valid = v.validate(jobid)
+    val isValid = v.validate(jobid)
     //end::validationExample[]
-    assert(valid === true)
+    assert(isValid === true)
   }
 
   test("two counter test, fail") {
