@@ -109,4 +109,52 @@ class ValidationTests extends FunSuite with SharedSparkContext {
     input.saveAsTextFile(Files.createTempDir().toURI().toString()+"/magic")
     assert(v.validate(6) === true)
   }
+
+  // A slightly more complex job
+  def runTwoCounterJob(sc: SparkContext, valid: Accumulator[Int], invalid: Accumulator[Int]) {
+    val input = sc.parallelize(1.to(10), 5)
+    // Fake rejecting some records
+    input.foreach{x =>
+      if (x % 5 == 0) {
+        invalid += 1
+      } else {
+        valid += 1
+      }
+    }
+    import com.google.common.io.Files
+    input.saveAsTextFile(Files.createTempDir().toURI().toString()+"/magic")
+  }
+
+  // Note: this is based on our README so may fail if it gets long or deleted
+  test("two counter test, pass") {
+    val vc = new ValidationConf(tempPath, "1", true,
+      List[ValidationRule](
+        new AbsolutePercentageSparkCounterValidationRule(
+          "invalidRecords", "validRecords", Some(0.0), Some(1.0)))
+    )
+    val sqlCtx = new SQLContext(sc)
+    val v = Validation(sc, sqlCtx, vc)
+    val valid = sc.accumulator(0)
+    val invalid = sc.accumulator(0)
+    v.registerAccumulator(valid, "validRecords")
+    v.registerAccumulator(invalid, "invalidRecords")
+    runTwoCounterJob(sc, valid, invalid)
+    assert(v.validate(7) === true)
+  }
+
+    test("two counter test, fail") {
+    val vc = new ValidationConf(tempPath, "1", true,
+      List[ValidationRule](
+        new AbsolutePercentageSparkCounterValidationRule(
+          "invalidRecords", "validRecords", Some(0.0), Some(0.1)))
+    )
+    val sqlCtx = new SQLContext(sc)
+    val v = Validation(sc, sqlCtx, vc)
+    val valid = sc.accumulator(0)
+    val invalid = sc.accumulator(0)
+    v.registerAccumulator(valid, "validRecords")
+    v.registerAccumulator(invalid, "invalidRecords")
+    runTwoCounterJob(sc, valid, invalid)
+    assert(v.validate(8) === false)
+  }
 }
