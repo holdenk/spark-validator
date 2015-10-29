@@ -127,6 +127,8 @@ class ValidationTests extends FunSuite with SharedSparkContext {
 
   // Note: this is based on our README so may fail if it gets long or deleted
   test("two counter test, pass") {
+    val jobid = 7
+    //tag::validationExample[]
     val vc = new ValidationConf(tempPath, "1", true,
       List[ValidationRule](
         new AbsolutePercentageSparkCounterValidationRule(
@@ -139,10 +141,12 @@ class ValidationTests extends FunSuite with SharedSparkContext {
     v.registerAccumulator(valid, "validRecords")
     v.registerAccumulator(invalid, "invalidRecords")
     runTwoCounterJob(sc, valid, invalid)
-    assert(v.validate(7) === true)
+    val valid = v.validate(jobid)
+    //end::validationExample[]
+    assert(valid === true)
   }
 
-    test("two counter test, fail") {
+  test("two counter test, fail") {
     val vc = new ValidationConf(tempPath, "1", true,
       List[ValidationRule](
         new AbsolutePercentageSparkCounterValidationRule(
