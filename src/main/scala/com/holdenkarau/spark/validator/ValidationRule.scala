@@ -77,7 +77,7 @@ case class AbsoluteSparkCounterValidationRule(counterName: String,
         Some(s"Value $value was not in range $min, $max")
       }
     } else {
-      Some(s"Failed to find key $counterName in $current.counters")
+      Some(s"Failed to find key $counterName in ${current.counters}")
     }
   }
 }
@@ -102,7 +102,7 @@ case class AbsolutePercentageSparkCounterValidationRule(numeratorCounterName: St
       }
     } else {
       Some(s"Failed to find keys $numeratorCounterName, $denominatorCounterName in " +
-        s" $current.counters")
+        s" ${current.counters}")
     }
   }
 }

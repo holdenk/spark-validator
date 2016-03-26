@@ -3,16 +3,17 @@
  */
 package com.holdenkarau.spark.validator
 
-import org.apache.spark.{Accumulator, SparkContext}
 import org.apache.spark.sql._
 import org.apache.spark.sql.types._
+import org.apache.spark.{Accumulator, SparkContext}
 
 import scala.collection.mutable.HashMap
 
 /**
+ * Validation class that used to validate counters data.
  *
  * @param sqlContext
- * @param config
+ * @param config validation configurations.
  */
 class Validation(sqlContext: SQLContext, config: ValidationConf) {
   case class typedAccumulators(
@@ -31,32 +32,51 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
   protected val validationListener = new ValidationListener()
   sqlContext.sparkContext.addSparkListener(validationListener)
 
-  /*
-   * Register an accumulator with the SparkValidator. Will overwrite any previous
-   * accumulator with the same name.
+  /**
+   * Registers an accumulator with the SparkValidator. Will overwrite any previous
+   * accumulator with the same name. Should register accumulators before validating.
    */
-  def registerAccumulator(accumulator: Accumulator[Double],
-    name: String)(implicit d: DummyImplicit) {
-    accumulators.doubles += ((name, accumulator))
+  def registerAccumulator(accumulator: Accumulator[Double], accumulatorName: String)
+                         (implicit d: DummyImplicit) {
+    accumulators.doubles += ((accumulatorName, accumulator))
   }
-  def registerAccumulator(accumulator: Accumulator[Int],
-    name: String)(implicit d: DummyImplicit,  d2: DummyImplicit) {
-    accumulators.ints += ((name, accumulator))
+
+  /**
+   * Registers an accumulator with the SparkValidator. Will overwrite any previous
+   * accumulator with the same name. Should register accumulators before validating.
+   */
+  def registerAccumulator(accumulator: Accumulator[Int], accumulatorName: String)
+                         (implicit d: DummyImplicit, d2: DummyImplicit) {
+    accumulators.ints += ((accumulatorName, accumulator))
   }
-  def registerAccumulator(accumulator: Accumulator[Long],
-    name: String)(implicit d: DummyImplicit,  d2: DummyImplicit,  d3: DummyImplicit) {
-    accumulators.longs += ((name, accumulator))
+
+  /**
+   * Registers an accumulator with the SparkValidator. Will overwrite any previous
+   * accumulator with the same name. Should register accumulators before validating.
+   */
+  def registerAccumulator(accumulator: Accumulator[Long], accumulatorName: String)
+                         (implicit d: DummyImplicit, d2: DummyImplicit, d3: DummyImplicit) {
+    accumulators.longs += ((accumulatorName, accumulator))
   }
-  def registerAccumulator(accumulator: Accumulator[Float],
-    name: String) {
-    accumulators.floats += ((name, accumulator))
+
+  /**
+   * Registers an accumulator with the SparkValidator. Will overwrite any previous
+   * accumulator with the same name. Should register accumulators before validating.
+   */
+  def registerAccumulator(accumulator: Accumulator[Float], accumulatorName: String) {
+    accumulators.floats += ((accumulatorName, accumulator))
   }
 
   // TODO Add API returning list of failed rules
-  /*
+
+  /**
    * Validates a run of a Spark Job. Returns true if the job is valid and
-   * also adds a SUCCESS marker to the path specified.
-   * Takes in a jobid, jobids should be monotonically increasing and unique per job.
+   * also adds a SUCCESS marker to the path specified. Takes in a jobid.
+   * jobids should be monotonically increasing and unique per job.
+   *
+   * @param jobid Current job id. jobids should be monotonically increasing and unique per job.
+   *
+   * @return Returns true if the job is valid, false if not valid.
    */
   def validate(jobid: Long): Boolean = {
     // Make a copy of the validation listener so that if we trigger
@@ -77,45 +97,60 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
     saveCounters(currentData, result)
     result
   }
-  /*
-   * Convert both Spark counters & user counters into a HistoricData object
+
+  /**
+   * Converts both Spark counters & user counters into a HistoricData object
    */
-  private def makeHistoricData(id: Long, accumulators: typedAccumulators, vl: ValidationListener):
-      HistoricData = {
+  private def makeHistoricData(id: Long, accumulators: typedAccumulators, vl: ValidationListener): HistoricData = {
     val counters = accumulators.doubles.map{case (key, value) =>
       (key, value.value.toLong) // We loose info, but w/e
     } ++
+    accumulators.floats.map{case (key, value) =>
+      (key, value.value.toLong) // We loose info, but w/e
+    } ++
     accumulators.longs.map{case (key, value) =>
-      (key, value.value) // We loose info, but w/e
+      (key, value.value)
     } ++
     accumulators.ints.map{case (key, value) =>
       (key, value.value.toLong) // We loose info, but w/e
-    } ++ vl.toMap().map{case (key, value) =>
-        (key, value)
+    } ++
+      vl.toMap().map{case (key, value) =>
+        (key, value) // spark metrics
     }
+
     HistoricData(id, counters.toMap)
   }
-  private def saveCounters(historicData: HistoricData, success: Boolean) = {
+
+  /**
+   * Saves historic data to the path given in validationConf.
+   *
+   * @param success success flag, true if job validation succeeded, false if validation failed.
+   */
+  private def saveCounters(historicData: HistoricData, success: Boolean): Unit = {
     val prefix = success match {
       case true => "SUCCESS"
       case false => "FAILURE"
     }
-    val id = historicData.jobid
+
+    // creates accumulator DataFrame
     val schema = StructType(List(StructField("counterName", StringType, false),
       StructField("value", LongType, false)))
     val rows = sqlContext.sparkContext.parallelize(historicData.counters.toList).map(kv => Row(kv._1, kv._2))
     val data = sqlContext.createDataFrame(rows, schema)
+
+    // save accumulators DataFrame
+    val id = historicData.jobid
     val path = config.jobBasePath + "/" + config.jobName +
-      "/validator/HistoricDataParquet/status=" + prefix + "/id="+id
+      "/validator/HistoricDataParquet/status=" + prefix + "/id=" + id
     data.write.parquet(path)
   }
 
-  /*
-   * Get the Historic Data as an Array
+  /**
+   * Gets the Historic Data as an Array.
    */
   private def findOldHistoricData(): Array[HistoricData] = {
-    val inputDF = findOldCounters()
-    inputDF match {
+    val countersDF = loadOldCounters()
+    countersDF match {
       case Some(df) => {
         val historicDataRDD = df.select("id", "counterName", "value").rdd
           .map{row => (
@@ -126,7 +161,8 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
             },
             (row.getString(1), row.getLong(2)))}
           .groupByKey()
-          .map{case (k, counters) => HistoricData(k, counters.toMap)}
+          .map{case (jobId, counters) => HistoricData(jobId, counters.toMap)}
+
         historicDataRDD.collect()
       }
       case None => {
@@ -135,10 +171,10 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
     }
   }
 
-  /*
-   * Return a DataFrame of the old counters (for SQL funtimes)
+  /**
+   * Returns a DataFrame of the old counters (for SQL funtimes).
    */
-  private def findOldCounters(): Option[DataFrame] = {
+  private def loadOldCounters(): Option[DataFrame] = {
     val base = config.jobBasePath + "/" + config.jobName
     val path = base + "/validator/HistoricDataParquet/status=SUCCESS"
     // Spark SQL doesn't handle empty directories very well...

@@ -12,6 +12,7 @@ class ValidationListener extends SparkListener {
 
   private val taskInfoMetrics = mutable.Buffer[(TaskInfo, TaskMetrics)]()
   private val stageMetrics = mutable.Buffer[StageInfo]()
+
   /**
    * Create a map representing the counters and info from this job
    */
@@ -20,23 +21,24 @@ class ValidationListener extends SparkListener {
   }
 
   private def tasksToMap(): Map[String, Long] = {
-    val tim = taskInfoMetrics.map{case (taskInfo, metrics) =>
+    val tim = taskInfoMetrics.map { case (taskInfo, metrics) =>
       val keyPrefix = s"taskinfo.${taskInfo.taskId}.${taskInfo.attempt}"
       val kvs = Seq(("launchTime", taskInfo.launchTime),
         ("successful", taskInfo.successful match {
           case true => 1L
           case false => 0L
         }),
-        ("duration" , taskInfo.duration)) ++ taskMetricsToMap(metrics)
+        ("duration", taskInfo.duration)) ++ taskMetricsToMap(metrics)
       (keyPrefix, kvs)
     }
     // Aggregate the keys across all tasks
-    val globals = tim.foldLeft(mutable.Map[String, Long]()){(acc, nv) =>
-      nv._2.foreach{case (k, v) =>
+    val globals = tim.foldLeft(mutable.Map[String, Long]()) { (acc, nv) =>
+      nv._2.foreach { case (k, v) =>
         acc(k) = (acc.getOrElse(k, 0L) + v)
       }
-      acc}.toMap
-    val per = tim.flatMap{case (keyPrefix, kvs) => kvs.map{case (k, v) => (keyPrefix + k , v)}}
+      acc
+    }.toMap
+    val per = tim.flatMap { case (keyPrefix, kvs) => kvs.map { case (k, v) => (keyPrefix + k, v) } }
     globals ++ per
   }
 
@@ -48,26 +50,27 @@ class ValidationListener extends SparkListener {
       ("memoryBytesSpilled", metrics.memoryBytesSpilled),
       ("diskBytesSpilled", metrics.diskBytesSpilled)
     ) ++
-    (metrics.inputMetrics match {
-      case None => Seq(("noInputData", 1L))
-      case Some(inputMetrics) => {
-        Seq(
-          ("noInputData", 0L),
-          ("bytesRead", inputMetrics.bytesRead),
-          ("recordsRead", inputMetrics.recordsRead))
-      }
-    }) ++
-    (metrics.outputMetrics match {
-      case None => Seq(("noOutputData", 1L))
-      case Some(outputMetrics) => {
-        Seq(
-          ("noOutputData", 0L),
-          ("bytesWritten", outputMetrics.bytesWritten),
-          ("recordsWritten", outputMetrics.recordsWritten))
+      (metrics.inputMetrics match {
+        case None => Seq(("noInputData", 1L))
+        case Some(inputMetrics) => {
+          Seq(
+            ("noInputData", 0L),
+            ("bytesRead", inputMetrics.bytesRead),
+            ("recordsRead", inputMetrics.recordsRead))
         }
-    })
+      }) ++
+      (metrics.outputMetrics match {
+        case None => Seq(("noOutputData", 1L))
+        case Some(outputMetrics) => {
+          Seq(
+            ("noOutputData", 0L),
+            ("bytesWritten", outputMetrics.bytesWritten),
+            ("recordsWritten", outputMetrics.recordsWritten))
+        }
+      })
     // TODO: Shuffled read, shuffled write, update blocks.
   }
+
   /**
    * Called when a stage completes successfully or fails, with information on the completed stage.
    */
