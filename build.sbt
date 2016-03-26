@@ -20,7 +20,7 @@ javacOptions ++= Seq("-source", "1.7", "-target", "1.7")
 
 spName := "holdenk/spark-validator"
 
-sparkVersion := "1.4.1"
+sparkVersion := "1.6.0"
 
 sparkComponents ++= Seq("core", "sql")
 
@@ -29,8 +29,8 @@ parallelExecution in Test := false
 // additional libraries
 libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "2.2.1",
-  "com.google.guava" % "guava" % "18.0",
-  "com.holdenkarau" %% "spark-testing-base" % "1.4.1_0.1.1")
+  "com.google.guava" % "guava" % "16.0.1",
+  "com.holdenkarau" %% "spark-testing-base" % "1.6.0_0.3.2")
 
 scalacOptions ++= Seq("-deprecation", "-unchecked")
 

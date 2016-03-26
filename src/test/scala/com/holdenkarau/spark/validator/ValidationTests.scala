@@ -4,14 +4,12 @@
 
 package com.holdenkarau.spark.validator
 
-import com.holdenkarau.spark.testing._
+import java.nio.file.Files
 
-import org.scalatest.{Assertions, BeforeAndAfterEach, FunSuite}
-import org.apache.spark.Accumulator
-import org.apache.spark.SparkContext
-import org.apache.spark.SparkContext._
+import com.holdenkarau.spark.testing._
+import org.apache.spark.{Accumulator, SparkContext}
 import org.apache.spark.sql._
-import java.nio.file.Files;
+import org.scalatest.FunSuite
 
 class ValidationTests extends FunSuite with SharedSparkContext {
   val tempPath = Files.createTempDirectory(null).toString()
@@ -65,7 +63,7 @@ class ValidationTests extends FunSuite with SharedSparkContext {
         new AbsoluteSparkCounterValidationRule("duration", Some(1), Some(1000)))
     )
     val sqlCtx = new SQLContext(sc)
-    val v = Validation(sc, sqlCtx, vc)
+    val v = Validation(sqlCtx, vc)
     val acc = sc.accumulator(0)
     v.registerAccumulator(acc, "acc")
     runSimpleJob(sc, acc)
@@ -79,7 +77,7 @@ class ValidationTests extends FunSuite with SharedSparkContext {
         new AbsoluteSparkCounterValidationRule("recordsRead", Some(30), Some(1000)))
     )
     val sqlCtx = new SQLContext(sc)
-    val v = Validation(sc, sqlCtx, vc)
+    val v = Validation(sqlCtx, vc)
     val acc = sc.accumulator(0)
     v.registerAccumulator(acc, "acc")
     import com.google.common.io.Files
@@ -91,10 +89,10 @@ class ValidationTests extends FunSuite with SharedSparkContext {
   test("random task failure test") {
     val vc = new ValidationConf(tempPath, "1", true,
       List[ValidationRule](
-        new AbsoluteSparkCounterValidationRule("duration", Some(1), Some(20000)))
+        new AbsoluteSparkCounterValidationRule("duration", Some(1), Some(90000)))
     )
     val sqlCtx = new SQLContext(sc)
-    val v = Validation(sc, sqlCtx, vc)
+    val v = Validation(sqlCtx, vc)
     val acc = sc.accumulator(0)
     v.registerAccumulator(acc, "acc")
     val input = sc.parallelize(1.to(200), 100)
@@ -135,7 +133,7 @@ class ValidationTests extends FunSuite with SharedSparkContext {
           "invalidRecords", "validRecords", Some(0.0), Some(1.0)))
     )
     val sqlCtx = new SQLContext(sc)
-    val v = Validation(sc, sqlCtx, vc)
+    val v = Validation(sqlCtx, vc)
     val valid = sc.accumulator(0)
     val invalid = sc.accumulator(0)
     v.registerAccumulator(valid, "validRecords")
@@ -153,7 +151,7 @@ class ValidationTests extends FunSuite with SharedSparkContext {
           "invalidRecords", "validRecords", Some(0.0), Some(0.1)))
     )
     val sqlCtx = new SQLContext(sc)
-    val v = Validation(sc, sqlCtx, vc)
+    val v = Validation(sqlCtx, vc)
     val valid = sc.accumulator(0)
     val invalid = sc.accumulator(0)
     v.registerAccumulator(valid, "validRecords")
