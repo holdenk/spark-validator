@@ -9,7 +9,12 @@ import org.apache.spark.sql.types._
 
 import scala.collection.mutable.HashMap
 
-class Validation(sc: SparkContext, sqlContext: SQLContext, config: ValidationConf) {
+/**
+ *
+ * @param sqlContext
+ * @param config
+ */
+class Validation(sqlContext: SQLContext, config: ValidationConf) {
   case class typedAccumulators(
     doubles: HashMap[String, Accumulator[Double]],
     ints: HashMap[String, Accumulator[Int]],
@@ -24,7 +29,7 @@ class Validation(sc: SparkContext, sqlContext: SQLContext, config: ValidationCon
     new HashMap[String, Accumulator[Long]]())
 
   protected val validationListener = new ValidationListener()
-  sc.addSparkListener(validationListener)
+  sqlContext.sparkContext.addSparkListener(validationListener)
 
   /*
    * Register an accumulator with the SparkValidator. Will overwrite any previous
@@ -98,9 +103,9 @@ class Validation(sc: SparkContext, sqlContext: SQLContext, config: ValidationCon
     val id = historicData.jobid
     val schema = StructType(List(StructField("counterName", StringType, false),
       StructField("value", LongType, false)))
-    val rows = sc.parallelize(historicData.counters.toList).map(kv => Row(kv._1, kv._2))
+    val rows = sqlContext.sparkContext.parallelize(historicData.counters.toList).map(kv => Row(kv._1, kv._2))
     val data = sqlContext.createDataFrame(rows, schema)
-    val path = config.jobBasePath + "/" + config.jobDir +
+    val path = config.jobBasePath + "/" + config.jobName +
       "/validator/HistoricDataParquet/status=" + prefix + "/id="+id
     data.write.parquet(path)
   }
@@ -134,10 +139,10 @@ class Validation(sc: SparkContext, sqlContext: SQLContext, config: ValidationCon
    * Return a DataFrame of the old counters (for SQL funtimes)
    */
   private def findOldCounters(): Option[DataFrame] = {
-    val base = config.jobBasePath + "/" + config.jobDir
+    val base = config.jobBasePath + "/" + config.jobName
     val path = base + "/validator/HistoricDataParquet/status=SUCCESS"
     // Spark SQL doesn't handle empty directories very well...
-    val fs = org.apache.hadoop.fs.FileSystem.get(sc.hadoopConfiguration)
+    val fs = org.apache.hadoop.fs.FileSystem.get(sqlContext.sparkContext.hadoopConfiguration)
     if (fs.exists(new org.apache.hadoop.fs.Path(path))) {
       val inputDF = sqlContext.read.parquet(path)
       Some(inputDF)
@@ -148,10 +153,11 @@ class Validation(sc: SparkContext, sqlContext: SQLContext, config: ValidationCon
 }
 
 object Validation {
-  def apply(sc: SparkContext, sqlContext: SQLContext, config: ValidationConf): Validation = {
-    new Validation(sc, sqlContext, config)
+  def apply(sqlContext: SQLContext, config: ValidationConf): Validation = {
+    new Validation(sqlContext, config)
   }
+
   def apply(sc: SparkContext, config: ValidationConf): Validation = {
-    new Validation(sc, new SQLContext(sc), config)
+    new Validation(new SQLContext(sc), config)
   }
 }
