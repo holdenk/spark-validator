@@ -141,8 +141,8 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
     // save accumulators DataFrame
     val id = historicData.jobid
     val path = config.jobBasePath + "/" + config.jobName +
-      "/validator/HistoricDataParquet/status=" + prefix + "/id=" + id
-    data.write.parquet(path)
+      "/validator/HistoricDataJson/status=" + prefix + "/id=" + id
+    data.write.format("json").save(path)
   }
 
   /**
@@ -176,11 +176,11 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
    */
   private def loadOldCounters(): Option[DataFrame] = {
     val base = config.jobBasePath + "/" + config.jobName
-    val path = base + "/validator/HistoricDataParquet/status=SUCCESS"
+    val path = base + "/validator/HistoricDataJson/status=SUCCESS"
     // Spark SQL doesn't handle empty directories very well...
     val fs = org.apache.hadoop.fs.FileSystem.get(sqlContext.sparkContext.hadoopConfiguration)
     if (fs.exists(new org.apache.hadoop.fs.Path(path))) {
-      val inputDF = sqlContext.read.parquet(path)
+      val inputDF = sqlContext.read.format("json").load(path)
       Some(inputDF)
     } else {
       None
