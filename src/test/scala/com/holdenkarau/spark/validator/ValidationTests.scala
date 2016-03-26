@@ -89,7 +89,7 @@ class ValidationTests extends FunSuite with SharedSparkContext {
   test("random task failure test") {
     val vc = new ValidationConf(tempPath, "1", true,
       List[ValidationRule](
-        new AbsoluteSparkCounterValidationRule("duration", Some(1), Some(20000)))
+        new AbsoluteSparkCounterValidationRule("duration", Some(1), Some(90000)))
     )
     val sqlCtx = new SQLContext(sc)
     val v = Validation(sqlCtx, vc)
