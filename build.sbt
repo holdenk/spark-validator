@@ -30,7 +30,7 @@ parallelExecution in Test := false
 libraryDependencies ++= Seq(
   "org.scalatest" %% "scalatest" % "2.2.1",
   "com.google.guava" % "guava" % "18.0",
-  "com.holdenkarau" %% "spark-testing-base" % "1.4.1_0.1.1")
+  "com.holdenkarau" %% "spark-testing-base" % "1.6.1_0.3.2")
 
 scalacOptions ++= Seq("-deprecation", "-unchecked")
 

@@ -3,11 +3,10 @@
  */
 package com.holdenkarau.spark.validator
 
-import scala.collection.mutable
-import scala.collection.immutable
-
-import org.apache.spark.scheduler._
 import org.apache.spark.executor.TaskMetrics
+import org.apache.spark.scheduler._
+
+import scala.collection.mutable
 
 class ValidationListener extends SparkListener {
 
@@ -26,7 +25,7 @@ class ValidationListener extends SparkListener {
       val kvs = Seq(("launchTime", taskInfo.launchTime),
         ("successful", taskInfo.successful match {
           case true => 1L
-          case fasle => 0L
+          case false => 0L
         }),
         ("duration" , taskInfo.duration)) ++ taskMetricsToMap(metrics)
       (keyPrefix, kvs)
@@ -34,7 +33,7 @@ class ValidationListener extends SparkListener {
     // Aggregate the keys across all tasks
     val globals = tim.foldLeft(mutable.Map[String, Long]()){(acc, nv) =>
       nv._2.foreach{case (k, v) =>
-        acc(k) = (acc.get(k).getOrElse(0L) + v)
+        acc(k) = (acc.getOrElse(k, 0L) + v)
       }
       acc}.toMap
     val per = tim.flatMap{case (keyPrefix, kvs) => kvs.map{case (k, v) => (keyPrefix + k , v)}}

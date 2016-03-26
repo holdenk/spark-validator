@@ -3,13 +3,11 @@
  */
 package com.holdenkarau.spark.validator
 
-import scala.collection.mutable.HashMap
-
-import org.apache.spark.Accumulator
-import org.apache.spark.SparkContext
-import org.apache.spark.SparkContext._
+import org.apache.spark.{Accumulator, SparkContext}
 import org.apache.spark.sql._
 import org.apache.spark.sql.types._
+
+import scala.collection.mutable.HashMap
 
 class Validation(sc: SparkContext, sqlContext: SQLContext, config: ValidationConf) {
   case class typedAccumulators(
@@ -66,7 +64,7 @@ class Validation(sc: SparkContext, sqlContext: SQLContext, config: ValidationCon
     val currentData = makeHistoricData(jobid, accumulators, validationListenerCopy)
     // Run through all of our rules until one fails
     val failedRules = config.rules.flatMap(rule => rule.validate(oldRuns, currentData))
-    if (!failedRules.isEmpty) {
+    if (failedRules.nonEmpty) {
       println("Failed rules include "+failedRules)
     }
     // if we failed return false otherwise return true
@@ -97,7 +95,6 @@ class Validation(sc: SparkContext, sqlContext: SQLContext, config: ValidationCon
       case true => "SUCCESS"
       case false => "FAILURE"
     }
-    import sqlContext.implicits._
     val id = historicData.jobid
     val schema = StructType(List(StructField("counterName", StringType, false),
       StructField("value", LongType, false)))

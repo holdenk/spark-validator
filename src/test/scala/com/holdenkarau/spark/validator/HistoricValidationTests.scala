@@ -4,13 +4,11 @@
 
 package com.holdenkarau.spark.validator
 
-import com.holdenkarau.spark.testing._
+import java.nio.file.Files
 
-import org.scalatest.{Assertions, BeforeAndAfterEach, FunSuite}
-import org.apache.spark.Accumulator
-import org.apache.spark.SparkContext
-import org.apache.spark.SparkContext._
-import java.nio.file.Files;
+import com.holdenkarau.spark.testing._
+import org.apache.spark.{Accumulator, SparkContext}
+import org.scalatest.FunSuite
 
 class HistoricValidationTests extends FunSuite with SharedSparkContext {
   val tempPath = Files.createTempDirectory(null).toString()
