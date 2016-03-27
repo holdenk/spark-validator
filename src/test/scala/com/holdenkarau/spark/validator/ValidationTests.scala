@@ -21,28 +21,27 @@ class ValidationTests extends FunSuite with SharedSparkContext {
     val input = sc.parallelize(1.to(10), 5)
     input.foreach(acc += _)
     import com.google.common.io.Files
-    input.saveAsTextFile(Files.createTempDir().toURI().toString()+"/magic")
+    input.saveAsTextFile(Files.createTempDir().toURI().toString() + "/magic")
   }
 
   test("null validation test") {
     val vc = new ValidationConf(tempPath, "1", true, List[ValidationRule]())
-    val v = Validation(sc, vc)
+    val validator = Validation(sc, vc)
     val acc = sc.accumulator(0)
-    v.registerAccumulator(acc, "acc")
+    validator.registerAccumulator(acc, "acc")
     runSimpleJob(sc, acc)
-    assert(v.validate(1) === true)
+    assert(validator.validate(1) === true)
   }
-
 
   test("sample expected failure") {
     val vc = new ValidationConf(tempPath, "1", true,
       List[ValidationRule](
         new AbsoluteSparkCounterValidationRule("resultSerializationTime", Some(1000), None))
     )
-    val v = Validation(sc, vc)
+    val validator = Validation(sc, vc)
     val acc = sc.accumulator(0)
     runSimpleJob(sc, acc)
-    assert(v.validate(2) === false)
+    assert(validator.validate(2) === false)
   }
 
   test("basic rule, expected success") {
@@ -50,11 +49,11 @@ class ValidationTests extends FunSuite with SharedSparkContext {
       List[ValidationRule](
         new AbsoluteSparkCounterValidationRule("duration", Some(1), Some(1000)))
     )
-    val v = Validation(sc, vc)
+    val validator = Validation(sc, vc)
     val acc = sc.accumulator(0)
-    v.registerAccumulator(acc, "acc")
+    validator.registerAccumulator(acc, "acc")
     runSimpleJob(sc, acc)
-    assert(v.validate(3) === true)
+    assert(validator.validate(3) === true)
   }
 
   test("basic rule, expected success, alt constructor") {
@@ -63,11 +62,11 @@ class ValidationTests extends FunSuite with SharedSparkContext {
         new AbsoluteSparkCounterValidationRule("duration", Some(1), Some(1000)))
     )
     val sqlCtx = new SQLContext(sc)
-    val v = Validation(sqlCtx, vc)
+    val validator = Validation(sqlCtx, vc)
     val acc = sc.accumulator(0)
-    v.registerAccumulator(acc, "acc")
+    validator.registerAccumulator(acc, "acc")
     runSimpleJob(sc, acc)
-    assert(v.validate(4) === true)
+    assert(validator.validate(4) === true)
   }
 
   // Note: this is based on our README so may fail if it gets long or deleted
@@ -77,12 +76,12 @@ class ValidationTests extends FunSuite with SharedSparkContext {
         new AbsoluteSparkCounterValidationRule("recordsRead", Some(30), Some(1000)))
     )
     val sqlCtx = new SQLContext(sc)
-    val v = Validation(sqlCtx, vc)
+    val validator = Validation(sqlCtx, vc)
     val acc = sc.accumulator(0)
-    v.registerAccumulator(acc, "acc")
+    validator.registerAccumulator(acc, "acc")
     import com.google.common.io.Files
-    sc.textFile("./README.md").map(_.length).saveAsTextFile(Files.createTempDir().toURI().toString()+"/magic")
-    assert(v.validate(5) === true)
+    sc.textFile("./README.md").map(_.length).saveAsTextFile(Files.createTempDir().toURI().toString() + "/magic")
+    assert(validator.validate(5) === true)
   }
 
   // Verify that our listener handles task errors well
@@ -92,11 +91,11 @@ class ValidationTests extends FunSuite with SharedSparkContext {
         new AbsoluteSparkCounterValidationRule("duration", Some(1), Some(90000)))
     )
     val sqlCtx = new SQLContext(sc)
-    val v = Validation(sqlCtx, vc)
+    val validator = Validation(sqlCtx, vc)
     val acc = sc.accumulator(0)
-    v.registerAccumulator(acc, "acc")
+    validator.registerAccumulator(acc, "acc")
     val input = sc.parallelize(1.to(200), 100)
-    input.map({x =>
+    input.map({ x =>
       val rand = new scala.util.Random()
       if (rand.nextInt(10) == 1) {
         throw new Exception("fake error")
@@ -104,15 +103,15 @@ class ValidationTests extends FunSuite with SharedSparkContext {
       x
     })
     import com.google.common.io.Files
-    input.saveAsTextFile(Files.createTempDir().toURI().toString()+"/magic")
-    assert(v.validate(6) === true)
+    input.saveAsTextFile(Files.createTempDir().toURI().toString() + "/magic")
+    assert(validator.validate(6) === true)
   }
 
   // A slightly more complex job
   def runTwoCounterJob(sc: SparkContext, valid: Accumulator[Int], invalid: Accumulator[Int]) {
     val input = sc.parallelize(1.to(10), 5)
     // Fake rejecting some records
-    input.foreach{x =>
+    input.foreach { x =>
       if (x % 5 == 0) {
         invalid += 1
       } else {
@@ -120,7 +119,7 @@ class ValidationTests extends FunSuite with SharedSparkContext {
       }
     }
     import com.google.common.io.Files
-    input.saveAsTextFile(Files.createTempDir().toURI().toString()+"/magic")
+    input.saveAsTextFile(Files.createTempDir().toURI().toString() + "/magic")
   }
 
   // Note: this is based on our README so may fail if it gets long or deleted
@@ -133,13 +132,13 @@ class ValidationTests extends FunSuite with SharedSparkContext {
           "invalidRecords", "validRecords", Some(0.0), Some(1.0)))
     )
     val sqlCtx = new SQLContext(sc)
-    val v = Validation(sqlCtx, vc)
+    val validator = Validation(sqlCtx, vc)
     val valid = sc.accumulator(0)
     val invalid = sc.accumulator(0)
-    v.registerAccumulator(valid, "validRecords")
-    v.registerAccumulator(invalid, "invalidRecords")
+    validator.registerAccumulator(valid, "validRecords")
+    validator.registerAccumulator(invalid, "invalidRecords")
     runTwoCounterJob(sc, valid, invalid)
-    val isValid = v.validate(jobid)
+    val isValid = validator.validate(jobid)
     //end::validationExample[]
     assert(isValid === true)
   }
@@ -151,12 +150,12 @@ class ValidationTests extends FunSuite with SharedSparkContext {
           "invalidRecords", "validRecords", Some(0.0), Some(0.1)))
     )
     val sqlCtx = new SQLContext(sc)
-    val v = Validation(sqlCtx, vc)
+    val validator = Validation(sqlCtx, vc)
     val valid = sc.accumulator(0)
     val invalid = sc.accumulator(0)
-    v.registerAccumulator(valid, "validRecords")
-    v.registerAccumulator(invalid, "invalidRecords")
+    validator.registerAccumulator(valid, "validRecords")
+    validator.registerAccumulator(invalid, "invalidRecords")
     runTwoCounterJob(sc, valid, invalid)
-    assert(v.validate(8) === false)
+    assert(validator.validate(8) === false)
   }
 }

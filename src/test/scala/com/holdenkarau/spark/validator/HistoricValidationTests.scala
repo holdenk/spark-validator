@@ -23,56 +23,53 @@ class HistoricValidationTests extends FunSuite with SharedSparkContext {
 
   test("simple first run test - populating acc") {
     val vc = new ValidationConf(tempPath, "1", true,
-            List[ValidationRule](
-        new AvgRule("acc", 0, Some(200), newCounter=true)))
-    val v = Validation(sc, vc)
+      List[ValidationRule](new AvgRule("acc", 0, Some(200), newCounter=true)))
+    val validator = Validation(sc, vc)
     val acc = sc.accumulator(0)
-    v.registerAccumulator(acc, "acc")
+    validator.registerAccumulator(acc, "acc")
     runSimpleJob(sc, acc)
-    assert(v.validate(1) === true)
+    assert(validator.validate(1) === true)
   }
 
 
   test("sample expected failure - should not be included in historic data") {
     val vc = new ValidationConf(tempPath, "1", true,
-      List[ValidationRule](
-        new AbsoluteSparkCounterValidationRule("resultSerializationTime", Some(1000), None))
-    )
-    val v = Validation(sc, vc)
+      List[ValidationRule](new AbsoluteSparkCounterValidationRule("resultSerializationTime", Some(1000), None)))
+    val validator = Validation(sc, vc)
     val acc = sc.accumulator(0)
     // We run this simple job 2x, but since we expect a failure it shouldn't skew the average
     runSimpleJob(sc, acc)
     runSimpleJob(sc, acc)
-    assert(v.validate(2) === false)
+    assert(validator.validate(2) === false)
   }
 
   test("basic historic rule") {
     val vc = new ValidationConf(tempPath, "1", true, List[ValidationRule](new AvgRule("acc", 0.001, Some(200))))
-    val v = Validation(sc, vc)
+    val validator = Validation(sc, vc)
     val acc = sc.accumulator(0)
-    v.registerAccumulator(acc, "acc")
+    validator.registerAccumulator(acc, "acc")
     runSimpleJob(sc, acc)
-    assert(v.validate(3) === true)
+    assert(validator.validate(3) === true)
   }
 
   test("validate historic new counter") {
     val vc = new ValidationConf(tempPath, "1", true,
       List[ValidationRule](new AvgRule("acc2", 0.001, Some(200), newCounter=true)))
-    val v = Validation(sc, vc)
+    val validator = Validation(sc, vc)
     val acc = sc.accumulator(0)
-    v.registerAccumulator(acc, "acc2")
+    validator.registerAccumulator(acc, "acc2")
     runSimpleJob(sc, acc)
-    assert(v.validate(4) === true)
+    assert(validator.validate(4) === true)
   }
 
   test("out of range") {
     val vc = new ValidationConf(tempPath, "1", true, List[ValidationRule](new AvgRule("acc", 0.001, Some(200))))
-    val v = Validation(sc, vc)
+    val validator = Validation(sc, vc)
     val acc = sc.accumulator(0)
-    v.registerAccumulator(acc, "acc")
+    validator.registerAccumulator(acc, "acc")
     // Run twice so we get a higher acc value
     runSimpleJob(sc, acc)
     runSimpleJob(sc, acc)
-    assert(v.validate(5) === false)
+    assert(validator.validate(5) === false)
   }
 }

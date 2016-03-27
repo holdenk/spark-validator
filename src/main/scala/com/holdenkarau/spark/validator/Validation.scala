@@ -10,12 +10,13 @@ import org.apache.spark.{Accumulator, SparkContext}
 import scala.collection.mutable.HashMap
 
 /**
- * Validation class that used to validate counters data.
+ * Validation class that will be used to validate counters data.
  *
  * @param sqlContext
  * @param config validation configurations.
  */
 class Validation(sqlContext: SQLContext, config: ValidationConf) {
+
   case class typedAccumulators(
     doubles: HashMap[String, Accumulator[Double]],
     ints: HashMap[String, Accumulator[Int]],
@@ -75,7 +76,6 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
    * jobids should be monotonically increasing and unique per job.
    *
    * @param jobid Current job id. jobids should be monotonically increasing and unique per job.
-   *
    * @return Returns true if the job is valid, false if not valid.
    */
   def validate(jobid: Long): Boolean = {
@@ -83,6 +83,7 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
     // any work on the spark context this does not update our counters from this point
     // forward.
     val validationListenerCopy = validationListener.copy()
+
     // Also fetch all the accumulators values
     val oldRuns = findOldHistoricData()
     // Format the current data
@@ -90,7 +91,7 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
     // Run through all of our rules until one fails
     val failedRules = config.rules.flatMap(rule => rule.validate(oldRuns, currentData))
     if (failedRules.nonEmpty) {
-      println("Failed rules include "+failedRules)
+      println("Failed rules include " + failedRules)
     }
     // if we failed return false otherwise return true
     val result = failedRules.isEmpty
@@ -102,19 +103,19 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
    * Converts both Spark counters & user counters into a HistoricData object
    */
   private def makeHistoricData(id: Long, accumulators: typedAccumulators, vl: ValidationListener): HistoricData = {
-    val counters = accumulators.doubles.map{case (key, value) =>
+    val counters = accumulators.doubles.map { case (key, value) =>
       (key, value.value.toLong) // We loose info, but w/e
     } ++
-    accumulators.floats.map{case (key, value) =>
+    accumulators.floats.map { case (key, value) =>
       (key, value.value.toLong) // We loose info, but w/e
     } ++
-    accumulators.longs.map{case (key, value) =>
+    accumulators.longs.map { case (key, value) =>
       (key, value.value)
     } ++
-    accumulators.ints.map{case (key, value) =>
+    accumulators.ints.map { case (key, value) =>
       (key, value.value.toLong) // We loose info, but w/e
     } ++
-      vl.toMap().map{case (key, value) =>
+      vl.toMap().map { case (key, value) =>
         (key, value) // spark metrics
     }
 
@@ -153,15 +154,16 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
     countersDF match {
       case Some(df) => {
         val historicDataRDD = df.select("id", "counterName", "value").rdd
-          .map{row => (
+          .map { row => (
             try {
               row.getLong(0)
             } catch {
               case e: Exception => row.getInt(0).toLong
             },
-            (row.getString(1), row.getLong(2)))}
+            (row.getString(1), row.getLong(2)))
+          }
           .groupByKey()
-          .map{case (jobId, counters) => HistoricData(jobId, counters.toMap)}
+          .map { case (jobId, counters) => HistoricData(jobId, counters.toMap) }
 
         historicDataRDD.collect()
       }
@@ -189,10 +191,26 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
 }
 
 object Validation {
+  /**
+   * Creates a Validation class, that will be used to validate counters data.
+   * Important Note: validation class should be created before running the job,
+   * So it can store Spark's built in metrics (bytes read, time, etc.)
+   *
+   * @param sqlContext
+   * @param config Validation configurations.
+   */
   def apply(sqlContext: SQLContext, config: ValidationConf): Validation = {
     new Validation(sqlContext, config)
   }
 
+  /**
+   * Creates a Validation class, that will be used to validate counters data.
+   * Important Note: validation class should be created before running the job,
+   * So it can store Spark's built in metrics (bytes read, time, etc.)
+   *
+   * @param sc Spark Context.
+   * @param config Validation configurations.
+   */
   def apply(sc: SparkContext, config: ValidationConf): Validation = {
     new Validation(new SQLContext(sc), config)
   }
