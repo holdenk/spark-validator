@@ -31,18 +31,6 @@ class HistoricValidationTests extends FunSuite with SharedSparkContext {
     assert(validator.validate(1) === true)
   }
 
-
-  test("sample expected failure - should not be included in historic data") {
-    val vc = new ValidationConf(tempPath, "1", true,
-      List[ValidationRule](new AbsoluteSparkCounterValidationRule("resultSerializationTime", Some(1000), None)))
-    val validator = Validation(sc, vc)
-    val acc = sc.accumulator(0)
-    // We run this simple job 2x, but since we expect a failure it shouldn't skew the average
-    runSimpleJob(sc, acc)
-    runSimpleJob(sc, acc)
-    assert(validator.validate(2) === false)
-  }
-
   test("basic historic rule") {
     val vc = new ValidationConf(tempPath, "1", true, List[ValidationRule](new AvgRule("acc", 0.001, Some(200))))
     val validator = Validation(sc, vc)
