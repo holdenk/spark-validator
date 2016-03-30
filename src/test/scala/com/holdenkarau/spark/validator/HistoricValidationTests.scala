@@ -23,7 +23,7 @@ class HistoricValidationTests extends FunSuite with SharedSparkContext {
 
   test("simple first run test - populating acc") {
     val vc = new ValidationConf(tempPath, "1", true,
-      List[ValidationRule](new AvgRule("acc", 0, Some(200), newCounter=true)))
+      List[ValidationRule](new AverageRule("acc", 0, Some(200), newCounter=true)))
     val validator = Validation(sc, vc)
     val acc = sc.accumulator(0)
     validator.registerAccumulator(acc, "acc")
@@ -32,7 +32,7 @@ class HistoricValidationTests extends FunSuite with SharedSparkContext {
   }
 
   test("basic historic rule") {
-    val vc = new ValidationConf(tempPath, "1", true, List[ValidationRule](new AvgRule("acc", 0.001, Some(200))))
+    val vc = new ValidationConf(tempPath, "1", true, List[ValidationRule](new AverageRule("acc", 0.001, Some(200))))
     val validator = Validation(sc, vc)
     val acc = sc.accumulator(0)
     validator.registerAccumulator(acc, "acc")
@@ -42,7 +42,7 @@ class HistoricValidationTests extends FunSuite with SharedSparkContext {
 
   test("validate historic new counter") {
     val vc = new ValidationConf(tempPath, "1", true,
-      List[ValidationRule](new AvgRule("acc2", 0.001, Some(200), newCounter=true)))
+      List[ValidationRule](new AverageRule("acc2", 0.001, Some(200), newCounter=true)))
     val validator = Validation(sc, vc)
     val acc = sc.accumulator(0)
     validator.registerAccumulator(acc, "acc2")
@@ -51,7 +51,7 @@ class HistoricValidationTests extends FunSuite with SharedSparkContext {
   }
 
   test("out of range") {
-    val vc = new ValidationConf(tempPath, "1", true, List[ValidationRule](new AvgRule("acc", 0.001, Some(200))))
+    val vc = new ValidationConf(tempPath, "1", true, List[ValidationRule](new AverageRule("acc", 0.001, Some(200))))
     val validator = Validation(sc, vc)
     val acc = sc.accumulator(0)
     validator.registerAccumulator(acc, "acc")

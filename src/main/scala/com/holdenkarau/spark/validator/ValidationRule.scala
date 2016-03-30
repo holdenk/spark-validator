@@ -24,15 +24,25 @@ abstract class NoHistoryValidationRule extends ValidationRule {
 }
 
 /**
- * Helper class to make it easy to write a rule based on previous average
- * maxDiff is an absolute
+ * Helper class to make it easy to compare the current counter value
+ * with its average value from previous runs. If the difference between current
+ * value and average is greater than maxDiff, then this rule will not be valid.
+ *
+ * @param counterName   Counter name we are validating. If counterName doesn't exist, rule will not be valid.
+ * @param maxDiff       Maximum allowed difference between current value and average value from previous runs.
+ * @param historyLength Length to compare with from previous runs. If the history is too long, you limit the
+ *                      number of runs you comparing with, by this length. If history length is None or negative
+ *                      value all previous runs will be included in comparison.
+ * @param newCounter    Flag that indicates if this run is the first time for this counter or not.
+ *                      Average rule is a relative rule that compares counter value with previous runs,
+ *                      So if newCounter is true no comparison will occur.
  */
-case class AvgRule(counterName: String,
-    maxDiff: Double, histLength: Option[Int], newCounter: Boolean = false) extends ValidationRule {
+case class AverageRule(counterName: String, maxDiff: Double, historyLength: Option[Int],
+    newCounter: Boolean = false) extends ValidationRule {
 
   override def validate(historicData: IndexedSeq[HistoricData], current: HistoricData):
   Option[String] = {
-    val samples = histLength.filter(_ <= 0).map(historicData.take(_)).getOrElse(historicData)
+    val samples = historyLength.filter(_ <= 0).map(historicData.take(_)).getOrElse(historicData)
     val data = samples.flatMap(_.counters.get(counterName))
 
     data.toList match {
@@ -48,7 +58,7 @@ case class AvgRule(counterName: String,
           ((r._1 + (c.toDouble / r._2)) * r._2 / (r._2 + 1), r._2 + 1))._1
 
         val value = current.counters.get(counterName).get
-        if (Math.abs(value - avg)<= maxDiff) {
+        if (Math.abs(value - avg) <= maxDiff) {
           None
         } else {
           Some(s"Value $value for counter $counterName was not in the range of " +
@@ -59,13 +69,16 @@ case class AvgRule(counterName: String,
   }
 }
 
-
 /**
- * Helper class to make it easy to write  rule with an absolute min/max.
- * Note: assumes that the key is present.
+ * Helper class to make it easy to limit counter value by absolute minimum and maximum values.
+ * If counter value is less than min value or greater than max value, then this rule will not be valid.
+ *
+ * @param counterName Counter name we are validating. If counterName doesn't exist, rule will not be valid.
+ * @param min         The minimum allowed value for this counter. If min is None, min limit will be ignored.
+ * @param max         The maximum allowed value for this counter. If max is None, max limit will be ignored.
  */
-case class AbsoluteSparkCounterValidationRule(counterName: String,
-  min: Option[Long], max: Option[Long]) extends NoHistoryValidationRule {
+case class AbsoluteValueRule(counterName: String, min: Option[Long], max: Option[Long])
+  extends NoHistoryValidationRule {
 
   override def validate(current: HistoricData): Option[String] = {
     val option = current.counters.get(counterName)
@@ -83,10 +96,18 @@ case class AbsoluteSparkCounterValidationRule(counterName: String,
 }
 
 /**
- * Helper class to make it easy to write a two counter relative
- * rule with an absolute min/max. Note: assumes that the keys is present.
+ * Helper class to make it easy to limit the ratio between two counters by min percentage and max percentage.
+ * Percentage is calculated by dividing numeratorCounter over denominatorCounter. If percentage is less than
+ * min value or greater than max value, then this rule will not be valid.
+ *
+ * @param numeratorCounterName   Numerator counter name we are validating. If numeratorCounterName doesn't exist,
+ *                               rule will not be valid.
+ * @param denominatorCounterName Denominator counter name we are validating. if denominatorCounterName doesn't
+ *                               exist, rule will not be valid.
+ * @param min                    The minimum allowed percentage. If min is None, min limit will be ignored.
+ * @param max                    The maximum allowed percentage. If max is None, max limit will be ignored.
  */
-case class AbsolutePercentageSparkCounterValidationRule(numeratorCounterName: String, denominatorCounterName: String,
+case class AbsolutePercentageRule(numeratorCounterName: String, denominatorCounterName: String,
     min: Option[Double], max: Option[Double]) extends NoHistoryValidationRule {
 
   override def validate(current: HistoricData): Option[String] = {
@@ -101,8 +122,7 @@ case class AbsolutePercentageSparkCounterValidationRule(numeratorCounterName: St
         Some(s"Value $value was not in range $min, $max")
       }
     } else {
-      Some(s"Failed to find keys $numeratorCounterName, $denominatorCounterName in " +
-        s" ${current.counters}")
+      Some(s"Failed to find keys $numeratorCounterName, $denominatorCounterName in ${current.counters}")
     }
   }
 }

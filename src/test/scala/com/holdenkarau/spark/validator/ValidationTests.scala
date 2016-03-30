@@ -45,8 +45,7 @@ class ValidationTests extends FunSuite with SharedSparkContext {
 
   test("sample expected failure") {
     val vc = new ValidationConf(tempPath, "job_2", true,
-      List[ValidationRule](
-        new AbsoluteSparkCounterValidationRule("resultSerializationTime", Some(1000), None))
+      List[ValidationRule](new AbsoluteValueRule("resultSerializationTime", Some(1000), None))
     )
     val validator = Validation(sc, vc)
     runSimpleJob(sc)
@@ -55,8 +54,7 @@ class ValidationTests extends FunSuite with SharedSparkContext {
 
   test("basic rule, expected success") {
     val vc = new ValidationConf(tempPath, "job_3", true,
-      List[ValidationRule](
-        new AbsoluteSparkCounterValidationRule("duration", Some(1), Some(1000)))
+      List[ValidationRule](new AbsoluteValueRule("duration", Some(1), Some(1000)))
     )
     val validator = Validation(sc, vc)
     runSimpleJob(sc)
@@ -65,8 +63,7 @@ class ValidationTests extends FunSuite with SharedSparkContext {
 
   test("basic rule, expected success, alt constructor") {
     val vc = new ValidationConf(tempPath, "job_4", true,
-      List[ValidationRule](
-        new AbsoluteSparkCounterValidationRule("duration", Some(1), Some(1000)))
+      List[ValidationRule](new AbsoluteValueRule("duration", Some(1), Some(1000)))
     )
     val sqlCtx = new SQLContext(sc)
     val validator = Validation(sqlCtx, vc)
@@ -77,8 +74,7 @@ class ValidationTests extends FunSuite with SharedSparkContext {
   // Note: this is based on our README so may fail if it gets long or deleted
   test("records read test") {
     val vc = new ValidationConf(tempPath, "job_5", true,
-      List[ValidationRule](
-        new AbsoluteSparkCounterValidationRule("recordsRead", Some(30), Some(1000)))
+      List[ValidationRule](new AbsoluteValueRule("recordsRead", Some(30), Some(1000)))
     )
     val sqlCtx = new SQLContext(sc)
     val validator = Validation(sqlCtx, vc)
@@ -91,12 +87,11 @@ class ValidationTests extends FunSuite with SharedSparkContext {
   // Verify that our listener handles task errors well
   test("random task failure test") {
     val vc = new ValidationConf(tempPath, "job_6", true,
-      List[ValidationRule](
-        new AbsoluteSparkCounterValidationRule("duration", Some(1), Some(90000)))
+      List[ValidationRule](new AbsoluteValueRule("duration", Some(1), Some(90000)))
     )
     val sqlCtx = new SQLContext(sc)
     val validator = Validation(sqlCtx, vc)
-    val input = sc.parallelize(1.to(200), 100)
+    val input = sc.parallelize(1 to 200, 100)
     input.map({ x =>
       val rand = new scala.util.Random()
       if (rand.nextInt(10) == 1) {
@@ -129,8 +124,7 @@ class ValidationTests extends FunSuite with SharedSparkContext {
     //tag::validationExample[]
     val vc = new ValidationConf(tempPath, "job_7", true,
       List[ValidationRule](
-        new AbsolutePercentageSparkCounterValidationRule(
-          "invalidRecords", "validRecords", Some(0.0), Some(1.0)))
+        new AbsolutePercentageRule("invalidRecords", "validRecords", Some(0.0), Some(1.0)))
     )
     val sqlCtx = new SQLContext(sc)
     val validator = Validation(sqlCtx, vc)
@@ -149,8 +143,7 @@ class ValidationTests extends FunSuite with SharedSparkContext {
   test("two counter test, fail") {
     val vc = new ValidationConf(tempPath, "job_8", true,
       List[ValidationRule](
-        new AbsolutePercentageSparkCounterValidationRule(
-          "invalidRecords", "validRecords", Some(0.0), Some(0.1)))
+        new AbsolutePercentageRule("invalidRecords", "validRecords", Some(0.0), Some(0.1)))
     )
     val sqlCtx = new SQLContext(sc)
     val validator = Validation(sqlCtx, vc)
@@ -168,7 +161,7 @@ class ValidationTests extends FunSuite with SharedSparkContext {
 
   test("sample expected failure - should not be included in historic data") {
     val vc = new ValidationConf(tempPath, "job_9", true,
-      List[ValidationRule](new AbsoluteSparkCounterValidationRule("resultSerializationTime", Some(1000), None)))
+      List[ValidationRule](new AbsoluteValueRule("resultSerializationTime", Some(1000), None)))
 
     val validator = Validation(sc, vc)
     val acc = sc.accumulator(0)
