@@ -3,6 +3,9 @@
  */
 package com.holdenkarau.spark.validator
 
+import java.sql.Timestamp
+import java.util.Calendar
+
 import org.apache.spark.sql._
 import org.apache.spark.sql.types._
 import org.apache.spark.{Accumulator, SparkContext}
@@ -75,10 +78,9 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
    * also adds a SUCCESS marker to the path specified. Takes in a jobid.
    * jobids should be monotonically increasing and unique per job.
    *
-   * @param jobid Current job id. jobids should be monotonically increasing and unique per job.
    * @return Returns true if the job is valid, false if not valid.
    */
-  def validate(jobid: Long): Boolean = {
+  def validate(): Boolean = {
     // Make a copy of the validation listener so that if we trigger
     // any work on the spark context this does not update our counters from this point
     // forward.
@@ -87,7 +89,7 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
     // Also fetch all the accumulators values
     val oldRuns = findOldHistoricData()
     // Format the current data
-    val currentData = makeHistoricData(jobid, accumulators, validationListenerCopy)
+    val currentData = makeHistoricData(accumulators, validationListenerCopy)
     // Run through all of our rules until one fails
     val failedRules = config.rules.flatMap(rule => rule.validate(oldRuns, currentData))
     if (failedRules.nonEmpty) {
@@ -102,7 +104,7 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
   /**
    * Converts both Spark counters & user counters into a HistoricData object
    */
-  private def makeHistoricData(id: Long, accumulators: typedAccumulators, vl: ValidationListener): HistoricData = {
+  private def makeHistoricData(accumulators: typedAccumulators, vl: ValidationListener): HistoricData = {
     val counters = accumulators.doubles.map { case (key, value) =>
       (key, value.value.toLong) // We loose info, but w/e
     } ++
@@ -119,7 +121,7 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
         (key, value) // spark metrics
     }
 
-    HistoricData(id, counters.toMap)
+    HistoricData(counters.toMap)
   }
 
   /**
@@ -134,15 +136,16 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
     }
 
     // creates accumulator DataFrame
-    val schema = StructType(List(StructField("counterName", StringType, false),
+    val schema = StructType(List(
+      StructField("counterName", StringType, false),
       StructField("value", LongType, false)))
     val rows = sqlContext.sparkContext.parallelize(historicData.counters.toList).map(kv => Row(kv._1, kv._2))
     val data = sqlContext.createDataFrame(rows, schema)
 
     // save accumulators DataFrame
-    val id = historicData.jobid
+    val date = currentDate()
     val path = config.jobBasePath + "/" + config.jobName +
-      "/validator/HistoricDataParquet/status=" + prefix + "/id=" + id
+      "/validator/HistoricDataParquet/status=" + prefix + "/date=" + date
     data.write.parquet(path)
   }
 
@@ -153,17 +156,10 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
     val countersDF = loadOldCounters()
     countersDF match {
       case Some(df) => {
-        val historicDataRDD = df.select("id", "counterName", "value").rdd
-          .map { row => (
-            try {
-              row.getLong(0)
-            } catch {
-              case e: Exception => row.getInt(0).toLong
-            },
-            (row.getString(1), row.getLong(2)))
-          }
+        val historicDataRDD = df.select("date", "counterName", "value").rdd
+          .map(row => (row.getString(0), (row.getString(1), row.getLong(2))))
           .groupByKey()
-          .map { case (jobId, counters) => HistoricData(jobId, counters.toMap) }
+          .map{ case (date, counters) => HistoricData(counters.toMap) }
 
         historicDataRDD.collect()
       }
@@ -187,6 +183,10 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
     } else {
       None
     }
+  }
+
+  def currentDate(): Timestamp = {
+    new Timestamp(Calendar.getInstance().getTime().getTime);
   }
 }
 

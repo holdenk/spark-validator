@@ -26,7 +26,7 @@ class ValidationTests extends FunSuite with SharedSparkContext {
     val acc = sc.accumulator(0)
     validator.registerAccumulator(acc, "acc")
     runSimpleJob(sc, acc)
-    assert(validator.validate(1) === true)
+    assert(validator.validate() === true)
   }
 
   test("sample expected failure") {
@@ -34,7 +34,7 @@ class ValidationTests extends FunSuite with SharedSparkContext {
     val vc = new ValidationConf(tempPath, "job_2", true, validationRules)
     val validator = Validation(sc, vc)
     runSimpleJob(sc)
-    assert(validator.validate(1) === false)
+    assert(validator.validate() === false)
   }
 
   test("basic rule, expected success") {
@@ -42,7 +42,7 @@ class ValidationTests extends FunSuite with SharedSparkContext {
     val vc = new ValidationConf(tempPath, "job_3", true, validationRules)
     val validator = Validation(sc, vc)
     runSimpleJob(sc)
-    assert(validator.validate(1) === true)
+    assert(validator.validate() === true)
   }
 
   test("basic rule, expected success, alt constructor") {
@@ -51,7 +51,7 @@ class ValidationTests extends FunSuite with SharedSparkContext {
     val sqlCtx = new SQLContext(sc)
     val validator = Validation(sqlCtx, vc)
     runSimpleJob(sc)
-    assert(validator.validate(1) === true)
+    assert(validator.validate() === true)
   }
 
   // Note: this is based on our README so may fail if it gets long or deleted
@@ -63,7 +63,7 @@ class ValidationTests extends FunSuite with SharedSparkContext {
 
     import com.google.common.io.Files
     sc.textFile("./README.md").map(_.length).saveAsTextFile(Files.createTempDir().toURI().toString() + "/magic")
-    assert(validator.validate(1) === true)
+    assert(validator.validate() === true)
   }
 
   // Verify that our listener handles task errors well
@@ -82,7 +82,7 @@ class ValidationTests extends FunSuite with SharedSparkContext {
     })
     import com.google.common.io.Files
     input.saveAsTextFile(Files.createTempDir().toURI().toString() + "/magic")
-    assert(validator.validate(1) === true)
+    assert(validator.validate() === true)
   }
 
   // Note: this is based on our README so may fail if it gets long or deleted
@@ -102,7 +102,7 @@ class ValidationTests extends FunSuite with SharedSparkContext {
 
     runTwoCounterJob(sc, valid, invalid)
     //end::validationExample[]
-    assert(validator.validate(1) === true)
+    assert(validator.validate() === true)
   }
 
   test("two counter test, fail") {
@@ -120,7 +120,7 @@ class ValidationTests extends FunSuite with SharedSparkContext {
 
     runTwoCounterJob(sc, valid, invalid)
 
-    assert(validator.validate(1) === false)
+    assert(validator.validate() === false)
   }
 
   test("sample expected failure - should not be included in historic data") {
@@ -133,7 +133,7 @@ class ValidationTests extends FunSuite with SharedSparkContext {
     runSimpleJob(sc, acc)
     runSimpleJob(sc, acc)
 
-    assert(validator.validate(1) === false)
+    assert(validator.validate() === false)
   }
 
   // A simple job we can use for some sanity checking

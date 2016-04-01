@@ -1,3 +1,3 @@
 package com.holdenkarau.spark.validator
 
-case class HistoricData(jobid: Long, counters: scala.collection.Map[String, Long])
+case class HistoricData(counters: scala.collection.Map[String, Long])

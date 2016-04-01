@@ -20,7 +20,7 @@ class HistoricValidationTests extends FunSuite with SharedSparkContext {
     val acc = sc.accumulator(0)
     validator.registerAccumulator(acc, "acc")
     runSimpleJob(sc, acc)
-    assert(validator.validate(1) === true)
+    assert(validator.validate() === true)
   }
 
   test("basic historic rule") {
@@ -30,7 +30,7 @@ class HistoricValidationTests extends FunSuite with SharedSparkContext {
     val acc = sc.accumulator(0)
     validator.registerAccumulator(acc, "acc")
     runSimpleJob(sc, acc)
-    assert(validator.validate(3) === true)
+    assert(validator.validate() === true)
   }
 
   test("validate historic new counter") {
@@ -40,7 +40,7 @@ class HistoricValidationTests extends FunSuite with SharedSparkContext {
     val acc = sc.accumulator(0)
     validator.registerAccumulator(acc, "acc2")
     runSimpleJob(sc, acc)
-    assert(validator.validate(4) === true)
+    assert(validator.validate() === true)
   }
 
   test("out of range") {
@@ -52,7 +52,7 @@ class HistoricValidationTests extends FunSuite with SharedSparkContext {
     // Run twice so we get a higher acc value
     runSimpleJob(sc, acc)
     runSimpleJob(sc, acc)
-    assert(validator.validate(5) === false)
+    assert(validator.validate() === false)
   }
 
   // A simple job we can use for some sanity checking
