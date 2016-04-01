@@ -84,7 +84,7 @@ case class AbsoluteValueRule(counterName: String, min: Option[Long], max: Option
     val option = current.counters.get(counterName)
     if (option.isDefined) {
       val value = option.get
-      if (min.forall(_ < value) && max.forall(value < _)) {
+      if (min.forall(_ <= value) && max.forall(_ >= value)) {
         None
       } else {
         Some(s"Value $value was not in range $min, $max")
@@ -116,7 +116,7 @@ case class AbsolutePercentageRule(numeratorCounterName: String, denominatorCount
 
     if (numeratorOption.isDefined && denominatorOption.isDefined) {
       val value = numeratorOption.get.toDouble / denominatorOption.get.toDouble
-      if (min.forall(_ < value) && max.forall(value < _)) {
+      if (min.forall(_ <= value) && max.forall(_ >= value)) {
         None
       } else {
         Some(s"Value $value was not in range $min, $max")
