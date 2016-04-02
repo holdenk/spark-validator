@@ -10,6 +10,7 @@ import org.apache.spark.sql._
 import org.apache.spark.sql.types._
 import org.apache.spark.{Accumulator, SparkContext}
 
+import scala.collection.mutable
 import scala.collection.mutable.HashMap
 
 /**
@@ -19,13 +20,6 @@ import scala.collection.mutable.HashMap
  * @param config validation configurations.
  */
 class Validation(sqlContext: SQLContext, config: ValidationConf) {
-
-  case class typedAccumulators(
-    doubles: HashMap[String, Accumulator[Double]],
-    ints: HashMap[String, Accumulator[Int]],
-    floats: HashMap[String, Accumulator[Float]],
-    longs: HashMap[String, Accumulator[Long]]) {
-  }
 
   protected val accumulators = new typedAccumulators(
     new HashMap[String, Accumulator[Double]](),
@@ -100,7 +94,7 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
     // Also fetch all the accumulators values
     val oldRuns = findOldHistoricData()
     // Format the current data
-    val currentData = makeHistoricData(accumulators, validationListenerCopy)
+    val currentData = HistoricData(accumulators, validationListenerCopy)
 
     // Run through all of our rules until one fails
     failedRules =
@@ -120,29 +114,6 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
     val result = failedRules.isEmpty
     saveCounters(currentData, result)
     result
-  }
-
-  /**
-   * Converts both Spark counters & user counters into a HistoricData object
-   */
-  private def makeHistoricData(accumulators: typedAccumulators, vl: ValidationListener): HistoricData = {
-    val counters = accumulators.doubles.map { case (key, value) =>
-      (key, value.value.toLong) // We loose info, but w/e
-    } ++
-    accumulators.floats.map { case (key, value) =>
-      (key, value.value.toLong) // We loose info, but w/e
-    } ++
-    accumulators.longs.map { case (key, value) =>
-      (key, value.value)
-    } ++
-    accumulators.ints.map { case (key, value) =>
-      (key, value.value.toLong) // We loose info, but w/e
-    } ++
-      vl.toMap().map { case (key, value) =>
-        (key, value) // spark metrics
-    }
-
-    HistoricData(counters.toMap)
   }
 
   /**
@@ -177,7 +148,7 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
     countersDF match {
       case Some(df) => {
         val historicDataRDD = df.select("date", "counterName", "value").rdd
-          .map(row => (row.getString(0), (row.getString(1), row.getLong(2))))
+          .map(row => (Timestamp.valueOf(row.getString(0)), (row.getString(1), row.getLong(2))))
           .groupByKey()
           .map { case (date, counters) => HistoricData(counters.toMap) }
 
@@ -235,3 +206,29 @@ object Validation {
     new Validation(new SQLContext(sc), config)
   }
 }
+
+case class typedAccumulators(
+  doubles: HashMap[String, Accumulator[Double]],
+  ints: HashMap[String, Accumulator[Int]],
+  floats: HashMap[String, Accumulator[Float]],
+  longs: HashMap[String, Accumulator[Long]]) {
+
+  def toMap(): Map[String, Long] = {
+    val accumulatorsMap: mutable.Map[String, Long] =
+      doubles.map { case (key, value) =>
+        (key, value.value.toLong) // We loose info, but w/e
+      } ++
+      floats.map { case (key, value) =>
+        (key, value.value.toLong) // We loose info, but w/e
+      } ++
+      longs.map { case (key, value) =>
+        (key, value.value)
+      } ++
+      ints.map { case (key, value) =>
+        (key, value.value.toLong) // We loose info, but w/e
+      }
+
+    accumulatorsMap.toMap
+  }
+}
+
