@@ -36,6 +36,8 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
   protected val validationListener = new ValidationListener()
   sqlContext.sparkContext.addSparkListener(validationListener)
 
+  private var failedRules: List[(ValidationRule, String)] = _
+
   /**
    * Registers an accumulator with the SparkValidator. Will overwrite any previous
    * accumulator with the same name. Should register accumulators before validating.
@@ -71,7 +73,11 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
     accumulators.floats += ((accumulatorName, accumulator))
   }
 
-  // TODO Add API returning list of failed rules
+  /**
+   * Gets failed rules after validation. Returns list of (failed validation rule, failure message).
+   * To get the failed rules you must validate first.
+   */
+  def getFailedRules(): List[(ValidationRule, String)] = failedRules
 
   /**
    * Validates a run of a Spark Job. Returns true if the job is valid and
@@ -90,11 +96,21 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
     val oldRuns = findOldHistoricData()
     // Format the current data
     val currentData = makeHistoricData(accumulators, validationListenerCopy)
+
     // Run through all of our rules until one fails
-    val failedRules = config.rules.flatMap(rule => rule.validate(oldRuns, currentData))
+    failedRules =
+      config.rules.flatMap(rule => {
+        val validationResult = rule.validate(oldRuns, currentData)
+        if (validationResult.isDefined) {
+          Some(rule, validationResult.get)
+        } else
+          None
+      })
+
     if (failedRules.nonEmpty) {
       println("Failed rules include " + failedRules)
     }
+
     // if we failed return false otherwise return true
     val result = failedRules.isEmpty
     saveCounters(currentData, result)
@@ -159,7 +175,7 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
         val historicDataRDD = df.select("date", "counterName", "value").rdd
           .map(row => (row.getString(0), (row.getString(1), row.getLong(2))))
           .groupByKey()
-          .map{ case (date, counters) => HistoricData(counters.toMap) }
+          .map { case (date, counters) => HistoricData(counters.toMap) }
 
         historicDataRDD.collect()
       }
@@ -208,7 +224,7 @@ object Validation {
    * Important Note: validation class should be created before running the job,
    * So it can store Spark's built in metrics (bytes read, time, etc.)
    *
-   * @param sc Spark Context.
+   * @param sc     Spark Context.
    * @param config Validation configurations.
    */
   def apply(sc: SparkContext, config: ValidationConf): Validation = {

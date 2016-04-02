@@ -136,6 +136,17 @@ class ValidationTests extends FunSuite with SharedSparkContext {
     assert(validator.validate() === false)
   }
 
+  test("test getting failed rules") {
+    val rule = new AbsoluteValueRule("resultSerializationTime", Some(1000), None)
+    val validationRules = List[ValidationRule](rule)
+    val vc = new ValidationConf(tempPath, "job_10", true, validationRules)
+    val validator = Validation(sc, vc)
+    runSimpleJob(sc)
+    assert(validator.validate() === false)
+
+    assert(validator.getFailedRules()(0)._1 == rule)
+  }
+
   // A simple job we can use for some sanity checking
   private def runSimpleJob(sc: SparkContext, acc: Accumulator[Int]) {
     val input = sc.parallelize(1.to(10), 5)
