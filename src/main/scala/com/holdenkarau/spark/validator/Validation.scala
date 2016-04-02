@@ -38,6 +38,8 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
 
   private var failedRules: List[(ValidationRule, String)] = _
 
+  private val jobStartDate = getCurrentDate()
+
   /**
    * Registers an accumulator with the SparkValidator. Will overwrite any previous
    * accumulator with the same name. Should register accumulators before validating.
@@ -83,6 +85,9 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
    * Validates a run of a Spark Job. Returns true if the job is valid and
    * also adds a SUCCESS marker to the path specified. Takes in a jobid.
    * jobids should be monotonically increasing and unique per job.
+   *
+   * It is recommended to call validate method only once per object. If you want to
+   * validate another accumulator create another Validation object.
    *
    * @return Returns true if the job is valid, false if not valid.
    */
@@ -159,9 +164,8 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
     val data = sqlContext.createDataFrame(rows, schema)
 
     // save accumulators DataFrame
-    val date = currentDate()
     val path = config.jobBasePath + "/" + config.jobName +
-      "/validator/HistoricDataParquet/status=" + prefix + "/date=" + date
+      "/validator/HistoricDataParquet/status=" + prefix + "/date=" + jobStartDate
     data.write.parquet(path)
   }
 
@@ -201,8 +205,8 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
     }
   }
 
-  def currentDate(): Timestamp = {
-    new Timestamp(Calendar.getInstance().getTime().getTime);
+  def getCurrentDate(): Timestamp = {
+    new Timestamp(Calendar.getInstance().getTime().getTime)
   }
 }
 
