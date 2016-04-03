@@ -7,7 +7,6 @@ import java.sql.Timestamp
 import java.util.Calendar
 
 import org.apache.spark.sql._
-import org.apache.spark.sql.types._
 import org.apache.spark.{Accumulator, SparkContext}
 
 import scala.collection.mutable
@@ -92,7 +91,9 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
     val validationListenerCopy = validationListener.copy()
 
     // Also fetch all the accumulators values
-    val oldRuns = findOldHistoricData()
+    val historicDataPath = HistoricData.getReadPath(config.jobBasePath, config.jobName, true)
+    val oldRuns: Array[HistoricData] = HistoricData.loadHistoricData(sqlContext, historicDataPath)
+
     // Format the current data
     val currentData = HistoricData(accumulators, validationListenerCopy)
 
@@ -112,61 +113,11 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
 
     // if we failed return false otherwise return true
     val result = failedRules.isEmpty
-    saveCounters(currentData, result)
+
+    val path = HistoricData.getWritePath(config.jobBasePath, config.jobName, result, jobStartDate.toString)
+    currentData.saveHistoricData(sqlContext, path)
+
     result
-  }
-
-  /**
-   * Saves historic data to the path given in validationConf.
-   *
-   * @param success success flag, true if job validation succeeded, false if validation failed.
-   */
-  private def saveCounters(historicData: HistoricData, success: Boolean): Unit = {
-    // creates accumulator DataFrame
-    val schema = StructType(List(
-      StructField("counterName", StringType, false),
-      StructField("value", LongType, false)))
-    val rows = sqlContext.sparkContext.parallelize(historicData.counters.toList).map(kv => Row(kv._1, kv._2))
-    val data = sqlContext.createDataFrame(rows, schema)
-
-    // save accumulators DataFrame
-    val path = HistoricData.getWritePath(config.jobBasePath, config.jobName, success, jobStartDate.toString)
-    data.write.parquet(path)
-  }
-
-  /**
-   * Gets the Historic Data as an Array.
-   */
-  private def findOldHistoricData(): Array[HistoricData] = {
-    val countersDF = loadOldCounters()
-    countersDF match {
-      case Some(df) => {
-        val historicDataRDD = df.select("date", "counterName", "value").rdd
-          .map(row => (Timestamp.valueOf(row.getString(0)), (row.getString(1), row.getLong(2))))
-          .groupByKey()
-          .map { case (date, counters) => HistoricData(counters.toMap) }
-
-        historicDataRDD.collect()
-      }
-      case None => {
-        new Array[HistoricData](0)
-      }
-    }
-  }
-
-  /**
-   * Returns a DataFrame of the old counters (for SQL funtimes).
-   */
-  private def loadOldCounters(): Option[DataFrame] = {
-    val path = HistoricData.getReadPath(config.jobBasePath, config.jobName, true)
-    // Spark SQL doesn't handle empty directories very well...
-    val fs = org.apache.hadoop.fs.FileSystem.get(sqlContext.sparkContext.hadoopConfiguration)
-    if (fs.exists(new org.apache.hadoop.fs.Path(path))) {
-      val inputDF = sqlContext.read.parquet(path)
-      Some(inputDF)
-    } else {
-      None
-    }
   }
 
   def getCurrentDate(): Timestamp = {
