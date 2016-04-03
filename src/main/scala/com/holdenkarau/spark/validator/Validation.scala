@@ -9,7 +9,6 @@ import java.util.Calendar
 import org.apache.spark.sql._
 import org.apache.spark.{Accumulator, SparkContext}
 
-import scala.collection.mutable
 import scala.collection.mutable.HashMap
 
 /**
@@ -20,7 +19,7 @@ import scala.collection.mutable.HashMap
  */
 class Validation(sqlContext: SQLContext, config: ValidationConf) {
 
-  protected val accumulators = new typedAccumulators(
+  protected val accumulators = new TypedAccumulators(
     new HashMap[String, Accumulator[Double]](),
     new HashMap[String, Accumulator[Int]](),
     new HashMap[String, Accumulator[Float]](),
@@ -151,28 +150,5 @@ object Validation {
   }
 }
 
-case class typedAccumulators(
-  doubles: HashMap[String, Accumulator[Double]],
-  ints: HashMap[String, Accumulator[Int]],
-  floats: HashMap[String, Accumulator[Float]],
-  longs: HashMap[String, Accumulator[Long]]) {
 
-  def toMap(): Map[String, Long] = {
-    val accumulatorsMap: mutable.Map[String, Long] =
-      doubles.map { case (key, value) =>
-        (key, value.value.toLong) // We loose info, but w/e
-      } ++
-      floats.map { case (key, value) =>
-        (key, value.value.toLong) // We loose info, but w/e
-      } ++
-      longs.map { case (key, value) =>
-        (key, value.value)
-      } ++
-      ints.map { case (key, value) =>
-        (key, value.value.toLong) // We loose info, but w/e
-      }
-
-    accumulatorsMap.toMap
-  }
-}
 

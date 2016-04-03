@@ -28,7 +28,7 @@ object HistoricData {
   /**
    * Converts both Spark counters & user counters into a HistoricData object
    */
-  def apply(accumulators: typedAccumulators, vl: ValidationListener): HistoricData = {
+  def apply(accumulators: TypedAccumulators, vl: ValidationListener): HistoricData = {
     val counters = accumulators.toMap() ++ vl.toMap()
     HistoricData(counters)
   }
