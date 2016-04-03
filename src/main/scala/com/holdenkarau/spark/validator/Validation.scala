@@ -122,11 +122,6 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
    * @param success success flag, true if job validation succeeded, false if validation failed.
    */
   private def saveCounters(historicData: HistoricData, success: Boolean): Unit = {
-    val prefix = success match {
-      case true => "SUCCESS"
-      case false => "FAILURE"
-    }
-
     // creates accumulator DataFrame
     val schema = StructType(List(
       StructField("counterName", StringType, false),
@@ -135,8 +130,7 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
     val data = sqlContext.createDataFrame(rows, schema)
 
     // save accumulators DataFrame
-    val path = config.jobBasePath + "/" + config.jobName +
-      "/validator/HistoricDataParquet/status=" + prefix + "/date=" + jobStartDate
+    val path = HistoricData.getWritePath(config.jobBasePath, config.jobName, success, jobStartDate.toString)
     data.write.parquet(path)
   }
 
@@ -164,8 +158,7 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
    * Returns a DataFrame of the old counters (for SQL funtimes).
    */
   private def loadOldCounters(): Option[DataFrame] = {
-    val base = config.jobBasePath + "/" + config.jobName
-    val path = base + "/validator/HistoricDataParquet/status=SUCCESS"
+    val path = HistoricData.getReadPath(config.jobBasePath, config.jobName, true)
     // Spark SQL doesn't handle empty directories very well...
     val fs = org.apache.hadoop.fs.FileSystem.get(sqlContext.sparkContext.hadoopConfiguration)
     if (fs.exists(new org.apache.hadoop.fs.Path(path))) {
