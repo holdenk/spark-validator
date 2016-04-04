@@ -8,6 +8,8 @@ import org.apache.spark.sql.{DataFrame, Row, SQLContext}
 case class HistoricData(counters: scala.collection.Map[String, Long]) {
   /**
    * Saves historic data to the given path.
+   * Path should contain the HistoricData's date, for ex. <br>
+   * /.../historic/data/path/date=2016-04-04 05:54:10
    */
   def saveHistoricData(sqlContext: SQLContext, path: String): Unit = {
     // creates accumulator DataFrame
