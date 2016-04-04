@@ -7,7 +7,7 @@ import java.sql.Timestamp
 import java.util.Calendar
 
 import org.apache.spark.sql._
-import org.apache.spark.{Accumulator, SparkContext}
+import org.apache.spark.{ValidatorSparkContext, Accumulator, SparkContext}
 
 import scala.collection.mutable.HashMap
 
@@ -87,6 +87,7 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
     // Make a copy of the validation listener so that if we trigger
     // any work on the spark context this does not update our counters from this point
     // forward.
+    ValidatorSparkContext.waitUntilEmpty(sqlContext)
     val validationListenerCopy = validationListener.copy()
 
     // Also fetch all the accumulators values
@@ -149,6 +150,3 @@ object Validation {
     new Validation(new SQLContext(sc), config)
   }
 }
-
-
-
