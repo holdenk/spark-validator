@@ -13,66 +13,54 @@ import org.scalatest.FunSuite
 class HistoricValidationTests extends FunSuite with SharedSparkContext {
   val tempPath = Files.createTempDirectory(null).toString()
 
-  // A simple job we can use for some sanity checking
-  def runSimpleJob(sc: SparkContext, acc: Accumulator[Int]) {
-    val input = sc.parallelize(1.to(10), 5)
-    input.foreach(acc += _)
-    import com.google.common.io.Files
-    input.saveAsTextFile(Files.createTempDir().toURI().toString()+"/magic")
-  }
-
   test("simple first run test - populating acc") {
-    val vc = new ValidationConf(tempPath, "1", true,
-            List[ValidationRule](
-        new AvgRule("acc", 0, Some(200), newCounter=true)))
-    val v = Validation(sc, vc)
+    val validationRules = List[ValidationRule](new AverageRule("acc", 0, Some(200), newCounter = true))
+    val vc = new ValidationConf(tempPath, "1", true, validationRules)
+    val validator = Validation(sc, vc)
     val acc = sc.accumulator(0)
-    v.registerAccumulator(acc, "acc")
+    validator.registerAccumulator(acc, "acc")
     runSimpleJob(sc, acc)
-    assert(v.validate(1) === true)
-  }
-
-
-  test("sample expected failure - should not be included in historic data") {
-    val vc = new ValidationConf(tempPath, "1", true,
-      List[ValidationRule](
-        new AbsoluteSparkCounterValidationRule("resultSerializationTime", Some(1000), None))
-    )
-    val v = Validation(sc, vc)
-    val acc = sc.accumulator(0)
-    // We run this simple job 2x, but since we expect a failure it shouldn't skew the average
-    runSimpleJob(sc, acc)
-    runSimpleJob(sc, acc)
-    assert(v.validate(2) === false)
+    assert(validator.validate() === true)
   }
 
   test("basic historic rule") {
-    val vc = new ValidationConf(tempPath, "1", true, List[ValidationRule](new AvgRule("acc", 0.001, Some(200))))
-    val v = Validation(sc, vc)
+    val validationRules = List[ValidationRule](new AverageRule("acc", 0.001, Some(200)))
+    val vc = new ValidationConf(tempPath, "1", true, validationRules)
+    val validator = Validation(sc, vc)
     val acc = sc.accumulator(0)
-    v.registerAccumulator(acc, "acc")
+    validator.registerAccumulator(acc, "acc")
     runSimpleJob(sc, acc)
-    assert(v.validate(3) === true)
+    assert(validator.validate() === true)
   }
 
   test("validate historic new counter") {
-    val vc = new ValidationConf(tempPath, "1", true,
-      List[ValidationRule](new AvgRule("acc2", 0.001, Some(200), newCounter=true)))
-    val v = Validation(sc, vc)
+    val validationRules = List[ValidationRule](new AverageRule("acc2", 0.001, Some(200), newCounter = true))
+    val vc = new ValidationConf(tempPath, "1", true, validationRules)
+    val validator = Validation(sc, vc)
     val acc = sc.accumulator(0)
-    v.registerAccumulator(acc, "acc2")
+    validator.registerAccumulator(acc, "acc2")
     runSimpleJob(sc, acc)
-    assert(v.validate(4) === true)
+    assert(validator.validate() === true)
   }
 
   test("out of range") {
-    val vc = new ValidationConf(tempPath, "1", true, List[ValidationRule](new AvgRule("acc", 0.001, Some(200))))
-    val v = Validation(sc, vc)
+    val validationRules = List[ValidationRule](new AverageRule("acc", 0.001, Some(200)))
+    val vc = new ValidationConf(tempPath, "1", true, validationRules)
+    val validator = Validation(sc, vc)
     val acc = sc.accumulator(0)
-    v.registerAccumulator(acc, "acc")
+    validator.registerAccumulator(acc, "acc")
     // Run twice so we get a higher acc value
     runSimpleJob(sc, acc)
     runSimpleJob(sc, acc)
-    assert(v.validate(5) === false)
+    assert(validator.validate() === false)
   }
+
+  // A simple job we can use for some sanity checking
+  private def runSimpleJob(sc: SparkContext, acc: Accumulator[Int]) {
+    val input = sc.parallelize(1.to(10), 5)
+    input.foreach(acc += _)
+    import com.google.common.io.Files
+    input.saveAsTextFile(Files.createTempDir().toURI().toString() + "/magic")
+  }
+
 }
