@@ -90,16 +90,15 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
     val validationListenerCopy = validationListener.copy()
 
     // Also fetch all the accumulators values
-    val historicDataPath = HistoricData.getReadPath(config.jobBasePath, config.jobName, true)
-    val oldRuns: Array[(LocalDateTime, HistoricData)] = HistoricData.loadHistoricData(sqlContext, historicDataPath)
+    val historicDataPath = HistoricData.getPath(config.jobBasePath, config.jobName, true)
+    val oldRuns: Array[HistoricData] = HistoricData.loadHistoricData(sqlContext, historicDataPath)
 
     // Format the current data
-    val currentData = HistoricData(accumulators, validationListenerCopy)
-
+    val currentData = HistoricData(accumulators, validationListenerCopy, jobStartDate)
     // Run through all of our rules until one fails
     failedRules =
       config.rules.flatMap(rule => {
-        val validationResult = rule.validate(oldRuns.map(_._2), currentData)
+        val validationResult = rule.validate(oldRuns, currentData)
         if (validationResult.isDefined) {
           Some(rule, validationResult.get)
         } else
@@ -113,8 +112,8 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
     // if we failed return false otherwise return true
     val result = failedRules.isEmpty
 
-    val path = HistoricData.getWritePath(config.jobBasePath, config.jobName, result, jobStartDate.toString)
-    currentData.saveHistoricData(sqlContext, path)
+    val currentDataPath = HistoricData.getPath(config.jobBasePath, config.jobName, result)
+    currentData.saveHistoricData(sqlContext, currentDataPath)
 
     result
   }
