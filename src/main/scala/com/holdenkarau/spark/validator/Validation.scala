@@ -3,11 +3,10 @@
  */
 package com.holdenkarau.spark.validator
 
-import java.sql.Timestamp
-import java.util.Calendar
+import java.time.LocalDateTime
 
 import org.apache.spark.sql._
-import org.apache.spark.{ValidatorSparkContext, Accumulator, SparkContext}
+import org.apache.spark.{Accumulator, SparkContext, ValidatorSparkContext}
 
 import scala.collection.mutable.HashMap
 
@@ -92,7 +91,7 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
 
     // Also fetch all the accumulators values
     val historicDataPath = HistoricData.getReadPath(config.jobBasePath, config.jobName, true)
-    val oldRuns: Array[HistoricData] = HistoricData.loadHistoricData(sqlContext, historicDataPath)
+    val oldRuns: Array[(LocalDateTime, HistoricData)] = HistoricData.loadHistoricData(sqlContext, historicDataPath)
 
     // Format the current data
     val currentData = HistoricData(accumulators, validationListenerCopy)
@@ -100,7 +99,7 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
     // Run through all of our rules until one fails
     failedRules =
       config.rules.flatMap(rule => {
-        val validationResult = rule.validate(oldRuns, currentData)
+        val validationResult = rule.validate(oldRuns.map(_._2), currentData)
         if (validationResult.isDefined) {
           Some(rule, validationResult.get)
         } else
@@ -120,8 +119,8 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
     result
   }
 
-  def getCurrentDate(): Timestamp = {
-    new Timestamp(Calendar.getInstance().getTime().getTime)
+  def getCurrentDate(): LocalDateTime = {
+    LocalDateTime.now
   }
 }
 

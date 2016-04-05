@@ -1,7 +1,8 @@
 package com.holdenkarau.spark.validator
 
-import java.sql.Timestamp
+import java.time.LocalDateTime
 
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.types.{LongType, StringType, StructField, StructType}
 import org.apache.spark.sql.{DataFrame, Row, SQLContext}
 
@@ -38,19 +39,21 @@ object HistoricData {
   /**
    * Gets the Historic Data as an Array.
    */
-  def loadHistoricData(sqlContext: SQLContext, path: String): Array[HistoricData] = {
+  def loadHistoricData(sqlContext: SQLContext, path: String): Array[(LocalDateTime, HistoricData)] = {
     val countersDF = loadHistoricDataDataFrame(sqlContext, path)
     countersDF match {
       case Some(df) => {
-        val historicDataRDD = df.select("date", "counterName", "value").rdd
-          .map(row => (Timestamp.valueOf(row.getString(0)), (row.getString(1), row.getLong(2))))
-          .groupByKey()
-          .map { case (date, counters) => HistoricData(counters.toMap) }
+        val historicDataRDD: RDD[(LocalDateTime, HistoricData)] =
+          df.select("date", "counterName", "value")
+            .rdd
+            .map(row => (row.getString(0), (row.getString(1), row.getLong(2))))
+            .groupByKey()
+            .map { case (date, counters) => (LocalDateTime.parse(date), HistoricData(counters.toMap)) }
 
         historicDataRDD.collect()
       }
       case None => {
-        new Array[HistoricData](0)
+        new Array[(LocalDateTime, HistoricData)](0)
       }
     }
   }
