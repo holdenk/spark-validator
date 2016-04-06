@@ -29,7 +29,7 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
 
   private var failedRules: List[(ValidationRule, String)] = _
 
-  private val jobStartDate = getCurrentDate()
+  private var jobStartDate = getCurrentDate()
 
   /**
    * Registers an accumulator with the SparkValidator. Will overwrite any previous
@@ -120,6 +120,13 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
 
   def getCurrentDate(): LocalDateTime = {
     LocalDateTime.now
+  }
+
+  /**
+   * For testing purposes only.
+   */
+  private[validator] def setCurrentDate(time: LocalDateTime) {
+    jobStartDate = time
   }
 }
 
