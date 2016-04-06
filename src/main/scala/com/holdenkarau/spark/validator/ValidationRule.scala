@@ -45,19 +45,25 @@ class AbstractAverageRule(counterName: String, maxDiff: Double, historyLength: O
 
   override def validate(historicData: IndexedSeq[HistoricData], current: HistoricData):
   Option[String] = {
-    val filteredData = freq.map(day =>
-      historicData.filter(_.date.get(day) == current.date.get(day))
-    ).getOrElse(historicData)
-    val samples = historyLength.filter(_ <= 0).map(filteredData.take(_)).getOrElse(historicData)
-    val data = samples.flatMap(_.counters.get(counterName))
+    val samples = historyLength.filter(_ <= 0).map(historicData.take(_)).getOrElse(historicData)
+    val counterData = samples.filter(_.counters.contains(counterName))
 
-    data.toList match {
+    if (counterData.isEmpty) {
+      if (newCounter) {
+        return None
+      } else {
+        return Some(s"No data found for $counterName and was not marked as new counter")
+      }
+    }
+
+    val filteredData = freq.map(day =>
+      counterData.filter(_.date.get(day) == current.date.get(day))
+     ).getOrElse(counterData)
+      .map(_.counters.get(counterName).get)
+
+    filteredData.toList match {
       case Nil => {
-        if (newCounter) {
-          None
-        } else {
-          Some("No data found for " + counterName + " and was not marked as new counter")
-        }
+        None
       }
       case head :: tail => {
         val avg = tail.foldLeft((head.toDouble, 1.0))((r: (Double, Double), c: Long) =>
@@ -67,7 +73,7 @@ class AbstractAverageRule(counterName: String, maxDiff: Double, historyLength: O
         if (Math.abs(value - avg) <= maxDiff) {
           None
         } else {
-          Some(s"Value $value for counter $counterName was not in the range of avg $avg+/- tol $maxDiff")
+          Some(s"Value $value for counter $counterName was not in the range of avg $avg +/- tol $maxDiff")
         }
       }
     }
@@ -75,7 +81,8 @@ class AbstractAverageRule(counterName: String, maxDiff: Double, historyLength: O
 }
 
 case class AverageRule(counterName: String, maxDiff: Double, historyLength: Option[Int],
-    newCounter: Boolean = false) extends AbstractAverageRule(counterName, maxDiff, historyLength, None, newCounter)
+    newCounter: Boolean = false)
+  extends AbstractAverageRule(counterName, maxDiff, historyLength, None, newCounter)
 
 case class AverageRuleSameWeekDay(counterName: String, maxDiff: Double, historyLength: Option[Int],
     newCounter: Boolean = false)
