@@ -35,7 +35,7 @@ abstract class NoHistoryValidationRule extends ValidationRule {
  * @param historyLength Length to compare with from previous runs. If the history is too long, you can limit the
  *                      number of runs you comparing with, by this length. If history length is None or negative
  *                      value all previous runs will be included in comparison.
- * @param freq          Day to compare with for ex. DAY_OF_WEEK, DAY_OF_MONTH, ... etc
+ * @param freq          Day to compare with for ex. DAY_OF_WEEK, DAY_OF_MONTH, ... etc.
  * @param newCounter    Flag that indicates if this run is the first time for this counter or not.
  *                      Average rule is a relative rule that compares counter value with previous runs,
  *                      So if newCounter is true no comparison will occur.
@@ -80,14 +80,58 @@ class AbstractAverageRule(counterName: String, maxDiff: Double, historyLength: O
   }
 }
 
+/**
+ * Helper class to make it easy to compare the current counter value
+ * with its average value from previous runs. If the difference between current
+ * value and average is greater than maxDiff, then this rule will not be valid.
+ *
+ * @param counterName   Counter name we are validating. If counterName doesn't exist, rule will not be valid.
+ * @param maxDiff       Maximum allowed difference between current value and average value from previous runs.
+ * @param historyLength Length to compare with from previous runs. If the history is too long, you can limit the
+ *                      number of runs you comparing with, by this length. If history length is None or negative
+ *                      value all previous runs will be included in comparison.
+ * @param newCounter    Flag that indicates if this run is the first time for this counter or not.
+ *                      Average rule is a relative rule that compares counter value with previous runs,
+ *                      So if newCounter is true no comparison will occur.
+ */
 case class AverageRule(counterName: String, maxDiff: Double, historyLength: Option[Int],
     newCounter: Boolean = false)
   extends AbstractAverageRule(counterName, maxDiff, historyLength, None, newCounter)
 
+/**
+ * Helper class to make it easy to compare the current counter value with its average value
+ * from previous runs in the same day of the week for ex. MONDAY, TUESDAY, ... etc.
+ * If the difference between current value and average is greater than maxDiff, then this rule will not be valid.
+ *
+ * @param counterName   Counter name we are validating. If counterName doesn't exist, rule will not be valid.
+ * @param maxDiff       Maximum allowed difference between current value and average value from previous runs.
+ * @param historyLength Length to compare with from previous runs. If the history is too long, you can limit the
+ *                      number of runs you comparing with, by this length. historyLength limits the whole runs not
+ *                      runs on the same day of the week. If history length is None or negative
+ *                      value all previous runs will be included in comparison.
+ * @param newCounter    Flag that indicates if this run is the first time for this counter or not.
+ *                      Average rule is a relative rule that compares counter value with previous runs,
+ *                      So if newCounter is true no comparison will occur.
+ */
 case class AverageRuleSameWeekDay(counterName: String, maxDiff: Double, historyLength: Option[Int],
     newCounter: Boolean = false)
   extends AbstractAverageRule(counterName, maxDiff, historyLength, Some(ChronoField.DAY_OF_WEEK), newCounter)
 
+/**
+ * Helper class to make it easy to compare the current counter value with its average value
+ * from previous runs in the same day of the month for ex. 1st day, 5th day, ... etc.
+ * If the difference between current value and average is greater than maxDiff, then this rule will not be valid.
+ *
+ * @param counterName   Counter name we are validating. If counterName doesn't exist, rule will not be valid.
+ * @param maxDiff       Maximum allowed difference between current value and average value from previous runs.
+ * @param historyLength Length to compare with from previous runs. If the history is too long, you can limit the
+ *                      number of runs you comparing with, by this length. historyLength limits the whole runs not
+ *                      runs on the same day of the month. If history length is None or negative
+ *                      value all previous runs will be included in comparison.
+ * @param newCounter    Flag that indicates if this run is the first time for this counter or not.
+ *                      Average rule is a relative rule that compares counter value with previous runs,
+ *                      So if newCounter is true no comparison will occur.
+ */
 case class AverageRuleSameMonthDay(counterName: String, maxDiff: Double, historyLength: Option[Int],
     newCounter: Boolean = false)
   extends AbstractAverageRule(counterName, maxDiff, historyLength, Some(ChronoField.DAY_OF_MONTH), newCounter)
