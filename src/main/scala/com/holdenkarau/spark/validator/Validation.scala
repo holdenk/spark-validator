@@ -3,11 +3,10 @@
  */
 package com.holdenkarau.spark.validator
 
-import java.sql.Timestamp
-import java.util.Calendar
+import java.time.LocalDateTime
 
 import org.apache.spark.sql._
-import org.apache.spark.{ValidatorSparkContext, Accumulator, SparkContext}
+import org.apache.spark.{Accumulator, SparkContext, ValidatorSparkContext}
 
 import scala.collection.mutable.HashMap
 
@@ -30,7 +29,7 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
 
   private var failedRules: List[(ValidationRule, String)] = _
 
-  private val jobStartDate = getCurrentDate()
+  private var jobStartDate = getCurrentDate()
 
   /**
    * Registers an accumulator with the SparkValidator. Will overwrite any previous
@@ -91,12 +90,11 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
     val validationListenerCopy = validationListener.copy()
 
     // Also fetch all the accumulators values
-    val historicDataPath = HistoricData.getReadPath(config.jobBasePath, config.jobName, true)
+    val historicDataPath = HistoricData.getPath(config.jobBasePath, config.jobName, true)
     val oldRuns: Array[HistoricData] = HistoricData.loadHistoricData(sqlContext, historicDataPath)
 
     // Format the current data
-    val currentData = HistoricData(accumulators, validationListenerCopy)
-
+    val currentData = HistoricData(accumulators, validationListenerCopy, jobStartDate)
     // Run through all of our rules until one fails
     failedRules =
       config.rules.flatMap(rule => {
@@ -114,14 +112,21 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
     // if we failed return false otherwise return true
     val result = failedRules.isEmpty
 
-    val path = HistoricData.getWritePath(config.jobBasePath, config.jobName, result, jobStartDate.toString)
-    currentData.saveHistoricData(sqlContext, path)
+    val currentDataPath = HistoricData.getPath(config.jobBasePath, config.jobName, result)
+    currentData.saveHistoricData(sqlContext, currentDataPath)
 
     result
   }
 
-  def getCurrentDate(): Timestamp = {
-    new Timestamp(Calendar.getInstance().getTime().getTime)
+  def getCurrentDate(): LocalDateTime = {
+    LocalDateTime.now
+  }
+
+  /**
+   * For testing purposes only.
+   */
+  private[validator] def setCurrentDate(time: LocalDateTime) {
+    jobStartDate = time
   }
 }
 

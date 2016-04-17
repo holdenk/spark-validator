@@ -3,6 +3,8 @@
  */
 package com.holdenkarau.spark.validator
 
+import java.time.temporal.{ChronoField, TemporalField}
+
 import scala.collection.IndexedSeq
 
 abstract class ValidationRule {
@@ -30,28 +32,38 @@ abstract class NoHistoryValidationRule extends ValidationRule {
  *
  * @param counterName   Counter name we are validating. If counterName doesn't exist, rule will not be valid.
  * @param maxDiff       Maximum allowed difference between current value and average value from previous runs.
- * @param historyLength Length to compare with from previous runs. If the history is too long, you limit the
+ * @param historyLength Length to compare with from previous runs. If the history is too long, you can limit the
  *                      number of runs you comparing with, by this length. If history length is None or negative
  *                      value all previous runs will be included in comparison.
+ * @param freq          Day to compare with for ex. DAY_OF_WEEK, DAY_OF_MONTH, ... etc.
  * @param newCounter    Flag that indicates if this run is the first time for this counter or not.
  *                      Average rule is a relative rule that compares counter value with previous runs,
  *                      So if newCounter is true no comparison will occur.
  */
-case class AverageRule(counterName: String, maxDiff: Double, historyLength: Option[Int],
-    newCounter: Boolean = false) extends ValidationRule {
+class AbstractAverageRule(counterName: String, maxDiff: Double, historyLength: Option[Int],
+    freq: Option[TemporalField], newCounter: Boolean = false) extends ValidationRule {
 
   override def validate(historicData: IndexedSeq[HistoricData], current: HistoricData):
   Option[String] = {
     val samples = historyLength.filter(_ <= 0).map(historicData.take(_)).getOrElse(historicData)
-    val data = samples.flatMap(_.counters.get(counterName))
+    val counterData = samples.filter(_.counters.contains(counterName))
 
-    data.toList match {
+    if (counterData.isEmpty) {
+      if (newCounter) {
+        return None
+      } else {
+        return Some(s"No data found for $counterName and was not marked as new counter")
+      }
+    }
+
+    val filteredData = freq.map(day =>
+      counterData.filter(_.date.get(day) == current.date.get(day))
+     ).getOrElse(counterData)
+      .map(_.counters.get(counterName).get)
+
+    filteredData.toList match {
       case Nil => {
-        if (newCounter) {
-          None
-        } else {
-          Some("No data found for " + counterName + " and was not marked as new counter")
-        }
+        None
       }
       case head :: tail => {
         val avg = tail.foldLeft((head.toDouble, 1.0))((r: (Double, Double), c: Long) =>
@@ -61,13 +73,69 @@ case class AverageRule(counterName: String, maxDiff: Double, historyLength: Opti
         if (Math.abs(value - avg) <= maxDiff) {
           None
         } else {
-          Some(s"Value $value for counter $counterName was not in the range of " +
-            s"avg $avg+/- tol $maxDiff")
+          Some(s"Value $value for counter $counterName was not in the range of avg $avg +/- tol $maxDiff")
         }
       }
     }
   }
 }
+
+/**
+ * Helper class to make it easy to compare the current counter value
+ * with its average value from previous runs. If the difference between current
+ * value and average is greater than maxDiff, then this rule will not be valid.
+ *
+ * @param counterName   Counter name we are validating. If counterName doesn't exist, rule will not be valid.
+ * @param maxDiff       Maximum allowed difference between current value and average value from previous runs.
+ * @param historyLength Length to compare with from previous runs. If the history is too long, you can limit the
+ *                      number of runs you comparing with, by this length. If history length is None or negative
+ *                      value all previous runs will be included in comparison.
+ * @param newCounter    Flag that indicates if this run is the first time for this counter or not.
+ *                      Average rule is a relative rule that compares counter value with previous runs,
+ *                      So if newCounter is true no comparison will occur.
+ */
+case class AverageRule(counterName: String, maxDiff: Double, historyLength: Option[Int],
+    newCounter: Boolean = false)
+  extends AbstractAverageRule(counterName, maxDiff, historyLength, None, newCounter)
+
+/**
+ * Helper class to make it easy to compare the current counter value with its average value
+ * from previous runs in the same day of the week for ex. MONDAY, TUESDAY, ... etc.
+ * If the difference between current value and average is greater than maxDiff, then this rule will not be valid.
+ *
+ * @param counterName   Counter name we are validating. If counterName doesn't exist, rule will not be valid.
+ * @param maxDiff       Maximum allowed difference between current value and average value from previous runs.
+ * @param historyLength Length to compare with from previous runs. If the history is too long, you can limit the
+ *                      number of runs you comparing with, by this length. historyLength limits the whole runs not
+ *                      runs on the same day of the week. If history length is None or negative
+ *                      value all previous runs will be included in comparison.
+ * @param newCounter    Flag that indicates if this run is the first time for this counter or not.
+ *                      Average rule is a relative rule that compares counter value with previous runs,
+ *                      So if newCounter is true no comparison will occur.
+ */
+case class AverageRuleSameWeekDay(counterName: String, maxDiff: Double, historyLength: Option[Int],
+    newCounter: Boolean = false)
+  extends AbstractAverageRule(counterName, maxDiff, historyLength, Some(ChronoField.DAY_OF_WEEK), newCounter)
+
+/**
+ * Helper class to make it easy to compare the current counter value with its average value
+ * from previous runs in the same day of the month for ex. 1st day, 5th day, ... etc.
+ * If the difference between current value and average is greater than maxDiff, then this rule will not be valid.
+ *
+ * @param counterName   Counter name we are validating. If counterName doesn't exist, rule will not be valid.
+ * @param maxDiff       Maximum allowed difference between current value and average value from previous runs.
+ * @param historyLength Length to compare with from previous runs. If the history is too long, you can limit the
+ *                      number of runs you comparing with, by this length. historyLength limits the whole runs not
+ *                      runs on the same day of the month. If history length is None or negative
+ *                      value all previous runs will be included in comparison.
+ * @param newCounter    Flag that indicates if this run is the first time for this counter or not.
+ *                      Average rule is a relative rule that compares counter value with previous runs,
+ *                      So if newCounter is true no comparison will occur.
+ */
+case class AverageRuleSameMonthDay(counterName: String, maxDiff: Double, historyLength: Option[Int],
+    newCounter: Boolean = false)
+  extends AbstractAverageRule(counterName, maxDiff, historyLength, Some(ChronoField.DAY_OF_MONTH), newCounter)
+
 
 /**
  * Helper class to make it easy to limit counter value by absolute minimum and maximum values.

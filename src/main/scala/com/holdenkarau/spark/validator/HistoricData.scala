@@ -1,15 +1,14 @@
 package com.holdenkarau.spark.validator
 
-import java.sql.Timestamp
+import java.time.LocalDateTime
 
+import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.types.{LongType, StringType, StructField, StructType}
 import org.apache.spark.sql.{DataFrame, Row, SQLContext}
 
-case class HistoricData(counters: scala.collection.Map[String, Long]) {
+case class HistoricData(counters: scala.collection.Map[String, Long], date: LocalDateTime) {
   /**
    * Saves historic data to the given path.
-   * Path should contain the HistoricData's date, for ex. <br>
-   * /.../historic/data/path/date=2016-04-04 05:54:10
    */
   def saveHistoricData(sqlContext: SQLContext, path: String): Unit = {
     // creates accumulator DataFrame
@@ -20,7 +19,8 @@ case class HistoricData(counters: scala.collection.Map[String, Long]) {
     val data = sqlContext.createDataFrame(rows, schema)
 
     // save accumulators DataFrame
-    data.write.parquet(path)
+    val writePath = s"$path/date=$date"
+    data.write.parquet(writePath)
   }
 
 }
@@ -30,9 +30,9 @@ object HistoricData {
   /**
    * Converts both Spark counters & user counters into a HistoricData object
    */
-  def apply(accumulators: TypedAccumulators, vl: ValidationListener): HistoricData = {
+  def apply(accumulators: TypedAccumulators, vl: ValidationListener, date: LocalDateTime): HistoricData = {
     val counters = accumulators.toMap() ++ vl.toMap()
-    HistoricData(counters)
+    HistoricData(counters, date)
   }
 
   /**
@@ -42,10 +42,12 @@ object HistoricData {
     val countersDF = loadHistoricDataDataFrame(sqlContext, path)
     countersDF match {
       case Some(df) => {
-        val historicDataRDD = df.select("date", "counterName", "value").rdd
-          .map(row => (Timestamp.valueOf(row.getString(0)), (row.getString(1), row.getLong(2))))
-          .groupByKey()
-          .map { case (date, counters) => HistoricData(counters.toMap) }
+        val historicDataRDD: RDD[HistoricData] =
+          df.select("date", "counterName", "value")
+            .rdd
+            .map(row => (row.getString(0), (row.getString(1), row.getLong(2))))
+            .groupByKey()
+            .map { case (date, counters) => HistoricData(counters.toMap, LocalDateTime.parse(date)) }
 
         historicDataRDD.collect()
       }
@@ -69,21 +71,14 @@ object HistoricData {
     }
   }
 
-
-  def getReadPath(jobBasePath: String, jobName: String, success: Boolean): String = {
+  def getPath(jobBasePath: String, jobName: String, success: Boolean): String = {
     val status = success match {
       case true => "SUCCESS"
       case false => "FAILURE"
     }
 
-    val readPath = s"$jobBasePath/$jobName/validator/HistoricDataParquet/status=$status"
-    readPath
-  }
-
-  def getWritePath(jobBasePath: String, jobName: String, success: Boolean, date: String): String = {
-    val readPath = getReadPath(jobBasePath, jobName, success)
-    val writePath = s"$readPath/date=$date"
-    writePath
+    val path = s"$jobBasePath/$jobName/validator/HistoricDataParquet/status=$status"
+    path
   }
 
 }
