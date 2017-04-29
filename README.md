@@ -1,3 +1,6 @@
+[![buildstatus](https://travis-ci.org/holdenk/spark-validator.svg?branch=master)](https://travis-ci.org/holdenk/spark-validator)
+[![codecov.io](http://codecov.io/github/holdenk/spark-validator/coverage.svg?branch=master)](http://codecov.io/github/holdenk/spark-validator?branch=master)
+
 # Spark Validator
 
 A library you can include in your Spark job to validate the counters and perform operations on success.
