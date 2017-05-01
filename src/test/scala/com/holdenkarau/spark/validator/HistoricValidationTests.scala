@@ -15,7 +15,8 @@ class HistoricValidationTests extends FunSuite with SharedSparkContext {
   val tempPath = Files.createTempDirectory(null).toString()
 
   test("simple first run test - populating acc") {
-    val validationRules = List[ValidationRule](new AverageRule("acc", 0, Some(200), newCounter = true))
+    val validationRules = List[ValidationRule](
+      new AverageRule("acc", 0, Some(200), newCounter = true))
     val vc = new ValidationConf(tempPath, "1", true, validationRules)
     val validator = Validation(sc, vc)
     val acc = sc.accumulator(0)
@@ -25,7 +26,8 @@ class HistoricValidationTests extends FunSuite with SharedSparkContext {
   }
 
   test("basic historic rule") {
-    val validationRules = List[ValidationRule](new AverageRule("acc", 0.001, Some(200)))
+    val validationRules = List[ValidationRule](
+      new AverageRule("acc", 0.001, Some(200)))
     val vc = new ValidationConf(tempPath, "1", true, validationRules)
     val validator = Validation(sc, vc)
     val acc = sc.accumulator(0)
@@ -35,7 +37,8 @@ class HistoricValidationTests extends FunSuite with SharedSparkContext {
   }
 
   test("validate historic new counter") {
-    val validationRules = List[ValidationRule](new AverageRule("acc2", 0.001, Some(200), newCounter = true))
+    val validationRules = List[ValidationRule](
+      new AverageRule("acc2", 0.001, Some(200), newCounter = true))
     val vc = new ValidationConf(tempPath, "1", true, validationRules)
     val validator = Validation(sc, vc)
     val acc = sc.accumulator(0)
@@ -45,7 +48,8 @@ class HistoricValidationTests extends FunSuite with SharedSparkContext {
   }
 
   test("out of range") {
-    val validationRules = List[ValidationRule](new AverageRule("acc", 0.001, Some(200)))
+    val validationRules = List[ValidationRule](
+      new AverageRule("acc", 0.001, Some(200)))
     val vc = new ValidationConf(tempPath, "1", true, validationRules)
     val validator = Validation(sc, vc)
     val acc = sc.accumulator(0)
@@ -57,25 +61,30 @@ class HistoricValidationTests extends FunSuite with SharedSparkContext {
   }
 
   test("test AverageRuleSameWeekDay") {
-    val validationRules1 = List[ValidationRule](new AverageRuleSameWeekDay("acc", 0.001, Some(200), true))
+    val validationRules1 = List[ValidationRule](
+      new AverageRuleSameWeekDay("acc", 0.001, Some(200), true))
     val vc1 = new ValidationConf(tempPath, "weekJob", true, validationRules1)
     val validator1 = Validation(sc, vc1)
-    validator1.setCurrentDate(LocalDateTime.now().minusWeeks(1)) // run as old run, from 1 week
+    // run as old run, from 1 week
+    validator1.setCurrentDate(LocalDateTime.now().minusWeeks(1))
     val acc1 = sc.accumulator(0)
     validator1.registerAccumulator(acc1, "acc")
     sc.parallelize(List(1, 2, 3)).foreach(x => acc1 += x) // acc1 =  6
     assert(validator1.validate() === true)
 
-    val validationRules2 = List[ValidationRule](new AverageRuleSameWeekDay("acc", 0.001, Some(200), false))
+    val validationRules2 = List[ValidationRule](
+      new AverageRuleSameWeekDay("acc", 0.001, Some(200), false))
     val vc2 = new ValidationConf(tempPath, "weekJob", false, validationRules2)
     val validator2 = Validation(sc, vc2)
-    validator2.setCurrentDate(LocalDateTime.now().minusDays(3)) // run as old run, from 3 days
+    // run as old run, from 3 days
+    validator2.setCurrentDate(LocalDateTime.now().minusDays(3))
     val acc2 = sc.accumulator(0)
     validator2.registerAccumulator(acc2, "acc")
     sc.parallelize(List(1, 2, 3, 9)).foreach(x => acc2 += x) // acc = 15
     assert(validator2.validate() === true)
 
-    val validationRules3 = List[ValidationRule](new AverageRuleSameWeekDay("acc", 0.001, Some(200), false))
+    val validationRules3 = List[ValidationRule](
+      new AverageRuleSameWeekDay("acc", 0.001, Some(200), false))
     val vc3 = new ValidationConf(tempPath, "weekJob", false, validationRules3)
     val validator3 = Validation(sc, vc3)
     validator3.setCurrentDate(LocalDateTime.now()) // run as new run
@@ -86,25 +95,30 @@ class HistoricValidationTests extends FunSuite with SharedSparkContext {
   }
 
   test("test AverageRuleSameMonthDay") {
-    val validationRules1 = List[ValidationRule](new AverageRuleSameMonthDay("acc", 0.001, Some(200), true))
+    val validationRules1 = List[ValidationRule](
+      new AverageRuleSameMonthDay("acc", 0.001, Some(200), true))
     val vc1 = new ValidationConf(tempPath, "MonthJob", true, validationRules1)
     val validator1 = Validation(sc, vc1)
-    validator1.setCurrentDate(LocalDateTime.now().minusMonths(1)) // run as old run, from 1 month
+    // run as old run, from 1 month
+    validator1.setCurrentDate(LocalDateTime.now().minusMonths(1))
     val acc1 = sc.accumulator(0)
     validator1.registerAccumulator(acc1, "acc")
     sc.parallelize(List(1, 2, 3)).foreach(x => acc1 += x) // acc1 =  6
     assert(validator1.validate() === true)
 
-    val validationRules2 = List[ValidationRule](new AverageRuleSameMonthDay("acc", 0.001, Some(200), false))
+    val validationRules2 = List[ValidationRule](
+      new AverageRuleSameMonthDay("acc", 0.001, Some(200), false))
     val vc2 = new ValidationConf(tempPath, "MonthJob", false, validationRules2)
     val validator2 = Validation(sc, vc2)
-    validator2.setCurrentDate(LocalDateTime.now().minusWeeks(2)) // run as old run, from 3 days
+    // run as old run, from 3 days
+    validator2.setCurrentDate(LocalDateTime.now().minusWeeks(2))
     val acc2 = sc.accumulator(0)
     validator2.registerAccumulator(acc2, "acc")
     sc.parallelize(List(1, 2, 3, 9)).foreach(x => acc2 += x) // acc = 15
     assert(validator2.validate() === true)
 
-    val validationRules3 = List[ValidationRule](new AverageRuleSameMonthDay("acc", 0.001, Some(200), false))
+    val validationRules3 = List[ValidationRule](
+      new AverageRuleSameMonthDay("acc", 0.001, Some(200), false))
     val vc3 = new ValidationConf(tempPath, "MonthJob", false, validationRules3)
     val validator3 = Validation(sc, vc3)
     validator3.setCurrentDate(LocalDateTime.now()) // run as new run

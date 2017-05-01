@@ -53,8 +53,9 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
    * Registers an accumulator with the SparkValidator. Will overwrite any previous
    * accumulator with the same name. Should register accumulators before validating.
    */
-  def registerAccumulator(accumulator: Accumulator[Long], accumulatorName: String)
-                         (implicit d: DummyImplicit, d2: DummyImplicit, d3: DummyImplicit) {
+  def registerAccumulator(
+    accumulator: Accumulator[Long], accumulatorName: String)
+    (implicit d: DummyImplicit, d2: DummyImplicit, d3: DummyImplicit) {
     accumulators.longs += ((accumulatorName, accumulator))
   }
 
@@ -67,8 +68,8 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
   }
 
   /**
-   * Gets failed rules after validation. Returns list of (failed validation rule, failure message).
-   * To get the failed rules you must validate first.
+   * Gets failed rules after validation. Returns list of (failed validation rule,
+   * failure message). To get the failed rules you must validate first.
    */
   def getFailedRules(): List[(ValidationRule, String)] = failedRules
 
@@ -84,17 +85,20 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
    */
   def validate(): Boolean = {
     // Make a copy of the validation listener so that if we trigger
-    // any work on the spark context this does not update our counters from this point
-    // forward.
+    // any work on the spark context this does not update our counters
+    // from this point forward.
     ValidatorSparkContext.waitUntilEmpty(sqlContext)
     val validationListenerCopy = validationListener.copy()
 
     // Also fetch all the accumulators values
-    val historicDataPath = HistoricData.getPath(config.jobBasePath, config.jobName, true)
-    val oldRuns: Array[HistoricData] = HistoricData.loadHistoricData(sqlContext, historicDataPath)
+    val historicDataPath =
+      HistoricData.getPath(config.jobBasePath, config.jobName, true)
+    val oldRuns: Array[HistoricData] =
+      HistoricData.loadHistoricData(sqlContext, historicDataPath)
 
     // Format the current data
-    val currentData = HistoricData(accumulators, validationListenerCopy, jobStartDate)
+    val currentData = HistoricData(
+      accumulators, validationListenerCopy, jobStartDate)
     // Run through all of our rules until one fails
     failedRules =
       config.rules.flatMap(rule => {
@@ -112,7 +116,8 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
     // if we failed return false otherwise return true
     val result = failedRules.isEmpty
 
-    val currentDataPath = HistoricData.getPath(config.jobBasePath, config.jobName, result)
+    val currentDataPath = HistoricData.getPath(
+      config.jobBasePath, config.jobName, result)
     currentData.saveHistoricData(sqlContext, currentDataPath)
 
     result

@@ -38,7 +38,10 @@ class ValidationListener extends SparkListener {
       }
       acc
     }.toMap
-    val per = tim.flatMap { case (keyPrefix, kvs) => kvs.map { case (k, v) => (keyPrefix + k, v) } }
+    val per = tim.flatMap {
+      case (keyPrefix, kvs) =>
+        kvs.map { case (k, v) => (keyPrefix + k, v) }
+    }
     globals ++ per
   }
 
@@ -72,7 +75,8 @@ class ValidationListener extends SparkListener {
   }
 
   /**
-   * Called when a stage completes successfully or fails, with information on the completed stage.
+   * Called when a stage completes successfully or fails,
+   * with information on the completed stage.
    */
   override def onStageCompleted(stageCompleted: SparkListenerStageCompleted) {
     stageMetrics += stageCompleted.stageInfo

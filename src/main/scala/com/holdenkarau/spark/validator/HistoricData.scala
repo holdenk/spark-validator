@@ -6,7 +6,8 @@ import org.apache.spark.rdd.RDD
 import org.apache.spark.sql.types.{LongType, StringType, StructField, StructType}
 import org.apache.spark.sql.{DataFrame, Row, SQLContext}
 
-case class HistoricData(counters: scala.collection.Map[String, Long], date: LocalDateTime) {
+case class HistoricData(
+  counters: scala.collection.Map[String, Long], date: LocalDateTime) {
   /**
    * Saves historic data to the given path.
    */
@@ -15,7 +16,9 @@ case class HistoricData(counters: scala.collection.Map[String, Long], date: Loca
     val schema = StructType(List(
       StructField("counterName", StringType, false),
       StructField("value", LongType, false)))
-    val rows = sqlContext.sparkContext.parallelize(counters.toList).map(kv => Row(kv._1, kv._2))
+    val rows =
+      sqlContext.sparkContext.parallelize(counters.toList).
+        map(kv => Row(kv._1, kv._2))
     val data = sqlContext.createDataFrame(rows, schema)
 
     // save accumulators DataFrame
@@ -30,7 +33,9 @@ object HistoricData {
   /**
    * Converts both Spark counters & user counters into a HistoricData object
    */
-  def apply(accumulators: TypedAccumulators, vl: ValidationListener, date: LocalDateTime): HistoricData = {
+  def apply(
+    accumulators: TypedAccumulators, vl: ValidationListener, date: LocalDateTime):
+      HistoricData = {
     val counters = accumulators.toMap() ++ vl.toMap()
     HistoricData(counters, date)
   }
@@ -47,7 +52,8 @@ object HistoricData {
             .rdd
             .map(row => (row.getString(0), (row.getString(1), row.getLong(2))))
             .groupByKey()
-            .map { case (date, counters) => HistoricData(counters.toMap, LocalDateTime.parse(date)) }
+            .map { case (date, counters) =>
+              HistoricData(counters.toMap, LocalDateTime.parse(date)) }
 
         historicDataRDD.collect()
       }
@@ -60,9 +66,13 @@ object HistoricData {
   /**
    * Returns a DataFrame of the old counters (for SQL funtimes).
    */
-  private def loadHistoricDataDataFrame(sqlContext: SQLContext, path: String): Option[DataFrame] = {
+  private def loadHistoricDataDataFrame(
+    sqlContext: SQLContext, path: String): Option[DataFrame] = {
+
     // Spark SQL doesn't handle empty directories very well...
-    val fs = org.apache.hadoop.fs.FileSystem.get(sqlContext.sparkContext.hadoopConfiguration)
+    val hadoopConf = sqlContext.sparkContext.hadoopConfiguration
+    val fs =
+      org.apache.hadoop.fs.FileSystem.get(hadoopConf)
     if (fs.exists(new org.apache.hadoop.fs.Path(path))) {
       val inputDF = sqlContext.read.parquet(path)
       Some(inputDF)
