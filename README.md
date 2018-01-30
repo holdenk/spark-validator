@@ -36,11 +36,18 @@ sbt/sbt compile
 ### Scala
 
 At the start of your Spark program once you have constructed your spark context call
-[code]
+
+```scala
 import com.holdenkarau.spark_validator
 ...
-val vl
-[/code]
+val rules = List(
+    new AbsoluteValueRule(counter = "recordsRead", min=Some(1000), max=None).
+    ...)
+val vc = new ValidationConf(counterPath, jobName, firstTime, rules)
+val vl = new Validation(sqlCtx, vc)
+...
+validator.validate()
+```
 
 ### Java
 
