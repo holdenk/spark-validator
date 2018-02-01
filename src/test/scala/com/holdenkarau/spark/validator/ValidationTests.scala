@@ -7,6 +7,7 @@ package com.holdenkarau.spark.validator
 import java.nio.file.Files
 
 import com.holdenkarau.spark.testing._
+import org.apache.spark.util._
 import org.apache.spark.sql._
 import org.apache.spark.{Accumulator, SparkContext}
 import org.scalatest.FunSuite
@@ -18,7 +19,6 @@ class ValidationTests extends FunSuite with SharedSparkContext {
   val tempPath = Files.createTempDirectory(null).toString()
 
   // TODO(holden): factor out a bunch of stuff.
-
   test("null validation test") {
     val validationRules = List[ValidationRule]()
     val vc = new ValidationConf(tempPath, "job_1", true, validationRules)
@@ -45,6 +45,26 @@ class ValidationTests extends FunSuite with SharedSparkContext {
     val vc = new ValidationConf(tempPath, "job_3", true, validationRules)
     val validator = Validation(vc)
     runSimpleJob(sc)
+    assert(validator.validate() === true)
+  }
+
+  test("different acc type sketchyness") {
+    val validationRules = List[ValidationRule](
+      new AbsoluteValueRule("duration", Some(1), Some(10000)),
+      new AbsoluteValueRule("magic_acc1", Some(10), Some(10)),
+      new AbsoluteValueRule("magic_acc2", Some(10), Some(10)))
+    val vc = new ValidationConf(tempPath, "job_3", true, validationRules)
+    val validator = Validation(vc)
+    val acc1 = sc.accumulator(0L, "magic_acc1")
+    val acc2 = sc.accumulator(0.0, "magic_acc2")
+    validator.registerAccumulator(acc1, "magic_acc1")
+    validator.registerAccumulator(acc2, "magic_acc2")
+    runSimpleJob(sc)
+    sc.parallelize(List(5, 5)).foreach{
+      x =>
+      acc1.add(x.toLong)
+      acc2.add(x.toDouble)
+    }
     assert(validator.validate() === true)
   }
 
@@ -188,5 +208,4 @@ class ValidationTests extends FunSuite with SharedSparkContext {
     import com.google.common.io.Files
     input.saveAsTextFile(Files.createTempDir().toURI().toString() + "/magic")
   }
-
 }
