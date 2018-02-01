@@ -22,7 +22,7 @@ class ValidationListener extends SparkListener {
 
   private def tasksToMap(): Map[String, Long] = {
     val tim = taskInfoMetrics.map { case (taskInfo, metrics) =>
-      val keyPrefix = s"taskinfo.${taskInfo.taskId}.${taskInfo.attempt}"
+      val keyPrefix = s"taskinfo.${taskInfo.taskId}.${taskInfo.attemptNumber}"
       val kvs = Seq(("launchTime", taskInfo.launchTime),
         ("successful", taskInfo.successful match {
           case true => 1L
@@ -46,6 +46,10 @@ class ValidationListener extends SparkListener {
   }
 
   private def taskMetricsToMap(metrics: TaskMetrics): Seq[(String, Long)] = {
+    val inputMetrics = metrics.inputMetrics
+    val outputMetrics = metrics.outputMetrics
+    val shuffleReadMetrics = metrics.shuffleReadMetrics
+    val shuffleWriteMetrics = metrics.shuffleWriteMetrics
     Seq(
       ("executorRunTime", metrics.executorRunTime),
       ("jvmGCTime", metrics.jvmGCTime),
@@ -53,25 +57,18 @@ class ValidationListener extends SparkListener {
       ("memoryBytesSpilled", metrics.memoryBytesSpilled),
       ("diskBytesSpilled", metrics.diskBytesSpilled)
     ) ++
-      (metrics.inputMetrics match {
-        case None => Seq(("noInputData", 1L))
-        case Some(inputMetrics) => {
-          Seq(
-            ("noInputData", 0L),
-            ("bytesRead", inputMetrics.bytesRead),
-            ("recordsRead", inputMetrics.recordsRead))
-        }
-      }) ++
-      (metrics.outputMetrics match {
-        case None => Seq(("noOutputData", 1L))
-        case Some(outputMetrics) => {
-          Seq(
-            ("noOutputData", 0L),
-            ("bytesWritten", outputMetrics.bytesWritten),
-            ("recordsWritten", outputMetrics.recordsWritten))
-        }
-      })
-    // TODO: Shuffled read, shuffled write, update blocks.
+    Seq(
+      ("bytesRead", inputMetrics.bytesRead),
+      ("recordsRead", inputMetrics.recordsRead)) ++
+    Seq(
+      ("bytesWritten", outputMetrics.bytesWritten),
+      ("recordsWritten", outputMetrics.recordsWritten)) ++
+    Seq(
+      ("shuffleRemoteBlocksFetched", shuffleReadMetrics.remoteBlocksFetched),
+      ("shuffleRemoteLocalBlocksFetched", shuffleReadMetrics.localBlocksFetched),
+      ("shuffleLocalBytesRead", shuffleReadMetrics.localBytesRead),
+      ("shuffleRemoteBytesRead", shuffleReadMetrics.remoteBytesRead))
+    // TODO shuffle write
   }
 
   /**

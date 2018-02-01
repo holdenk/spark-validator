@@ -1,4 +1,4 @@
-scalaVersion := "2.10.4"
+scalaVersion := "2.11.8"
 
 crossScalaVersions := Seq("2.10.4", "2.11.6")
 
@@ -12,15 +12,11 @@ publishMavenStyle := true
 
 version := "0.0.3"
 
-scalaVersion := "2.10.4"
-
-crossScalaVersions := Seq("2.10.4", "2.11.6")
-
 javacOptions ++= Seq("-source", "1.8", "-target", "1.8")
 
 spName := "holdenk/spark-validator"
 
-sparkVersion := "1.6.0"
+sparkVersion := "2.2.1"
 
 sparkComponents ++= Seq("core", "sql")
 
@@ -28,9 +24,8 @@ parallelExecution in Test := false
 
 // additional libraries
 libraryDependencies ++= Seq(
-  "org.scalatest" %% "scalatest" % "2.2.1",
-  "com.google.guava" % "guava" % "16.0.1",
-  "com.holdenkarau" %% "spark-testing-base" % "1.6.0_0.3.2")
+  "org.scalatest" %% "scalatest" % "3.0.1" % "test",
+  "com.holdenkarau" %% "spark-testing-base" % "2.2.0_0.7.2" % "test")
 
 scalacOptions ++= Seq("-deprecation", "-unchecked")
 

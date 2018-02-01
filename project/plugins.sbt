@@ -1,17 +1,14 @@
+addSbtPlugin("org.scalastyle" %% "scalastyle-sbt-plugin" % "0.8.0")
+
 resolvers += "sonatype-releases" at "https://oss.sonatype.org/content/repositories/releases/"
 
 resolvers += "Spark Package Main Repo" at "https://dl.bintray.com/spark-packages/maven"
 
-resolvers += Resolver.url("artifactory", url("http://scalasbt.artifactoryonline.com/scalasbt/sbt-plugin-releases"))(Resolver.ivyStylePatterns)
+addSbtPlugin("org.spark-packages" % "sbt-spark-package" % "0.2.5")
 
-resolvers += "Typesafe Repository" at "http://repo.typesafe.com/typesafe/releases/"
+addSbtPlugin("com.jsuereth" % "sbt-pgp" % "1.0.0")
 
-resolvers += "Spray Repository" at "http://repo.spray.cc/"
+addSbtPlugin("org.scoverage" % "sbt-scoverage" % "1.5.0")
 
-addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.10.2")
+addSbtPlugin("com.eed3si9n" % "sbt-assembly" % "0.14.5")
 
-addSbtPlugin("org.spark-packages" % "sbt-spark-package" % "0.2.2")
-
-addSbtPlugin("org.scalastyle" %% "scalastyle-sbt-plugin" % "0.8.0")
-
-addSbtPlugin("org.scoverage" % "sbt-scoverage" % "1.1.0")
