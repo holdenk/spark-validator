@@ -3,7 +3,7 @@
  */
 package com.holdenkarau.spark.validator
 
-import java.time.LocalDateTime
+import java.sql.Timestamp
 
 import org.apache.spark.sql._
 import org.apache.spark.{Accumulator, SparkContext, ValidatorSparkContext}
@@ -16,7 +16,7 @@ import scala.collection.mutable.HashMap
  * @param sqlContext
  * @param config validation configurations.
  */
-class Validation(sqlContext: SQLContext, config: ValidationConf) {
+class Validation(session: SparkSession, config: ValidationConf) {
 
   protected val accumulators = new TypedAccumulators(
     new HashMap[String, Accumulator[Double]](),
@@ -25,7 +25,7 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
     new HashMap[String, Accumulator[Long]]())
 
   protected val validationListener = new ValidationListener()
-  sqlContext.sparkContext.addSparkListener(validationListener)
+  session.sparkContext.addSparkListener(validationListener)
 
   private var failedRules: List[(ValidationRule, String)] = _
 
@@ -87,14 +87,14 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
     // Make a copy of the validation listener so that if we trigger
     // any work on the spark context this does not update our counters
     // from this point forward.
-    ValidatorSparkContext.waitUntilEmpty(sqlContext)
+    ValidatorSparkContext.waitUntilEmpty(session)
     val validationListenerCopy = validationListener.copy()
 
     // Also fetch all the accumulators values
     val historicDataPath =
       HistoricData.getPath(config.jobBasePath, config.jobName, true)
     val oldRuns: Array[HistoricData] =
-      HistoricData.loadHistoricData(sqlContext, historicDataPath)
+      HistoricData.loadHistoricData(session, historicDataPath)
 
     // Format the current data
     val currentData = HistoricData(
@@ -118,19 +118,19 @@ class Validation(sqlContext: SQLContext, config: ValidationConf) {
 
     val currentDataPath = HistoricData.getPath(
       config.jobBasePath, config.jobName, result)
-    currentData.saveHistoricData(sqlContext, currentDataPath)
+    currentData.saveHistoricData(session, currentDataPath)
 
     result
   }
 
-  def getCurrentDate(): LocalDateTime = {
-    LocalDateTime.now
+  def getCurrentDate(): Timestamp = {
+    new Timestamp(System.currentTimeMillis())
   }
 
   /**
    * For testing purposes only.
    */
-  private[validator] def setCurrentDate(time: LocalDateTime) {
+  private[validator] def setCurrentDate(time: Timestamp) {
     jobStartDate = time
   }
 }
@@ -144,8 +144,8 @@ object Validation {
    * @param sqlContext
    * @param config Validation configurations.
    */
-  def apply(sqlContext: SQLContext, config: ValidationConf): Validation = {
-    new Validation(sqlContext, config)
+  def apply(session: SparkSession, config: ValidationConf): Validation = {
+    new Validation(session, config)
   }
 
   /**
@@ -153,10 +153,9 @@ object Validation {
    * Important Note: validation class should be created before running the job,
    * So it can store Spark's built in metrics (bytes read, time, etc.)
    *
-   * @param sc     Spark Context.
    * @param config Validation configurations.
    */
-  def apply(sc: SparkContext, config: ValidationConf): Validation = {
-    new Validation(new SQLContext(sc), config)
+  def apply(config: ValidationConf): Validation = {
+    new Validation(SparkSession.builder().getOrCreate(), config)
   }
 }

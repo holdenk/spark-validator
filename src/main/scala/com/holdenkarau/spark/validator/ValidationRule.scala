@@ -70,8 +70,9 @@ class AbstractAverageRule(
       }
     }
 
+    // Filter the data for only specific days if desired
     val filteredData = freq.map(day =>
-      counterData.filter(_.date.get(day) == current.date.get(day))
+      counterData.filter(_.date.toLocalDateTime().get(day) == current.date.toLocalDateTime().get(day))
      ).getOrElse(counterData)
       .map(_.counters.get(counterName).get)
 

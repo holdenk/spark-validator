@@ -22,7 +22,7 @@ class ValidationTests extends FunSuite with SharedSparkContext {
   test("null validation test") {
     val validationRules = List[ValidationRule]()
     val vc = new ValidationConf(tempPath, "job_1", true, validationRules)
-    val validator = Validation(sc, vc)
+    val validator = Validation(vc)
     val acc = sc.accumulator(0)
     validator.registerAccumulator(acc, "acc")
     runSimpleJob(sc, acc)
@@ -34,7 +34,7 @@ class ValidationTests extends FunSuite with SharedSparkContext {
       new AbsoluteValueRule("resultSerializationTime", Some(1000), None))
     val vc = new ValidationConf(
       tempPath, "job_2", true, validationRules)
-    val validator = Validation(sc, vc)
+    val validator = Validation(vc)
     runSimpleJob(sc)
     assert(validator.validate() === false)
   }
@@ -43,7 +43,7 @@ class ValidationTests extends FunSuite with SharedSparkContext {
     val validationRules = List[ValidationRule](
       new AbsoluteValueRule("duration", Some(1), Some(1000)))
     val vc = new ValidationConf(tempPath, "job_3", true, validationRules)
-    val validator = Validation(sc, vc)
+    val validator = Validation(vc)
     runSimpleJob(sc)
     assert(validator.validate() === true)
   }
@@ -53,7 +53,7 @@ class ValidationTests extends FunSuite with SharedSparkContext {
       new AbsoluteValueRule("duration", Some(1), Some(1000)))
     val vc = new ValidationConf(tempPath, "job_4", true, validationRules)
     val sqlCtx = new SQLContext(sc)
-    val validator = Validation(sqlCtx, vc)
+    val validator = Validation(vc)
     runSimpleJob(sc)
     assert(validator.validate() === true)
   }
@@ -64,7 +64,7 @@ class ValidationTests extends FunSuite with SharedSparkContext {
       new AbsoluteValueRule("recordsRead", Some(30), Some(1000)))
     val vc = new ValidationConf(tempPath, "job_5", true, validationRules)
     val sqlCtx = new SQLContext(sc)
-    val validator = Validation(sqlCtx, vc)
+    val validator = Validation(vc)
 
     import com.google.common.io.Files
     sc.textFile("./README.md").map(_.length).
@@ -78,7 +78,7 @@ class ValidationTests extends FunSuite with SharedSparkContext {
       new AbsoluteValueRule("duration", Some(1), Some(90000)))
     val vc = new ValidationConf(tempPath, "job_6", true, validationRules)
     val sqlCtx = new SQLContext(sc)
-    val validator = Validation(sqlCtx, vc)
+    val validator = Validation(vc)
     val input = sc.parallelize(1 to 200, 100)
     input.map({ x =>
       val rand = new scala.util.Random()
@@ -101,7 +101,7 @@ class ValidationTests extends FunSuite with SharedSparkContext {
         "invalidRecords", "validRecords", Some(0.0), Some(1.0)))
     val vc = new ValidationConf(tempPath, "job_7", true, validationRules)
     val sqlCtx = new SQLContext(sc)
-    val validator = Validation(sqlCtx, vc)
+    val validator = Validation(vc)
 
     val valid = sc.accumulator(0)
     validator.registerAccumulator(valid, "validRecords")
@@ -120,7 +120,7 @@ class ValidationTests extends FunSuite with SharedSparkContext {
         "invalidRecords", "validRecords", Some(0.0), Some(0.1)))
     val vc = new ValidationConf(tempPath, "job_8", true, validationRules)
     val sqlCtx = new SQLContext(sc)
-    val validator = Validation(sqlCtx, vc)
+    val validator = Validation(vc)
 
     val valid = sc.accumulator(0)
     validator.registerAccumulator(valid, "validRecords")
@@ -138,7 +138,7 @@ class ValidationTests extends FunSuite with SharedSparkContext {
       new AbsoluteValueRule("resultSerializationTime", Some(1000), None))
     val vc = new ValidationConf(tempPath, "job_9", true, validationRules)
 
-    val validator = Validation(sc, vc)
+    val validator = Validation(vc)
     val acc = sc.accumulator(0)
     // We run this simple job 2x, but since we it fails it shouldn't skew the avg.
     runSimpleJob(sc, acc)
@@ -151,7 +151,7 @@ class ValidationTests extends FunSuite with SharedSparkContext {
     val rule = new AbsoluteValueRule("resultSerializationTime", Some(1000), None)
     val validationRules = List[ValidationRule](rule)
     val vc = new ValidationConf(tempPath, "job_10", true, validationRules)
-    val validator = Validation(sc, vc)
+    val validator = Validation(vc)
     runSimpleJob(sc)
     assert(validator.validate() === false)
 
